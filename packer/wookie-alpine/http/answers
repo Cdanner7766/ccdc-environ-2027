@@ -1,0 +1,21 @@
+# Alpine setup-alpine answerfile (Wookie base image)
+# Docs: https://wiki.alpinelinux.org/wiki/Alpine_setup_scripts#setup-alpine
+
+KEYMAPOPTS="us us"
+HOSTNAMEOPTS="wookie"
+DEVDOPTS=mdev
+INTERFACESOPTS="auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    hostname wookie
+"
+TIMEZONEOPTS="UTC"
+PROXYOPTS=none
+APKREPOSOPTS="-1"          # use first (fastest) mirror
+SSHDOPTS=openssh
+NTPOPTS="chrony"
+DISKOPTS="-m sys /dev/sda" # install to disk, sys mode
+ROOTSSHKEY=""             # Ludus injects its key post-build
+USEROPTS=""

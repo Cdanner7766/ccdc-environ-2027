@@ -1,0 +1,9 @@
+---
+# Ashla — Debian, DB backend (serves Tython + Wookie)
+# ---------------------------------------------------------------------------
+# TODO (fill when we build this role): version-pinned package/app versions and
+# any tunables. Pin everything with an explicit version so re-runs don't drift.
+#
+# Example shape:
+#   ashla_db_app_version: "x.y.z"
+#   ashla_db_listen_port: 0

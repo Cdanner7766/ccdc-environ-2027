@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: deathstar-ad
+# HOST: Deathstar — Windows Server 2019, AD DC + DNS + auth
+# OS:   Windows Server 2019
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   Create AD users/OUs/GPO. Seed the user accounts that Bogan mail maps to. Weak/reused local-admin + service-account patterns for realistic AD attack paths (kerberoast-able SPN, etc.). All static config.
+#
+# DEPENDS ON: none (forest root — must exist FIRST)
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "deathstar-ad | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement deathstar-ad (Deathstar — Windows Server 2019, AD DC + DNS + auth)"

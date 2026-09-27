@@ -1,0 +1,9 @@
+---
+# Deathstar — Windows Server 2019, AD DC + DNS + auth
+# ---------------------------------------------------------------------------
+# TODO (fill when we build this role): version-pinned package/app versions and
+# any tunables. Pin everything with an explicit version so re-runs don't drift.
+#
+# Example shape:
+#   deathstar_ad_app_version: "x.y.z"
+#   deathstar_ad_listen_port: 0

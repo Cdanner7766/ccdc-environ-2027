@@ -1,0 +1,13 @@
+# Ansible
+*.retry
+ansible/collections/
+*.log
+
+# Packer
+packer_cache/
+*.pkrvars.hcl
+crash.log
+
+# Local secrets / vault (never commit real range creds)
+*.vault
+vault-password*

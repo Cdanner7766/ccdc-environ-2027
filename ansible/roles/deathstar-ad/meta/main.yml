@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: deathstar_ad
+  namespace: ccdc
+  author: CCDC range
+  description: "Deathstar — Windows Server 2019, AD DC + DNS + auth"
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms: []
+# Build-order dependency (documentation only; Ludus deploys per-VM, so these
+# are enforced by the deploy order in README, not by role dependency chains).
+dependencies: []
+# Depends-on (informational): none (forest root — must exist FIRST)

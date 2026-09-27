@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: wookie_web_ftp
+  namespace: ccdc
+  author: CCDC range
+  description: "Wookie — Alpine (custom), web/menu/FTP reading Ashla DB"
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms: []
+# Build-order dependency (documentation only; Ludus deploys per-VM, so these
+# are enforced by the deploy order in README, not by role dependency chains).
+dependencies: []
+# Depends-on (informational): Ashla (DB), custom Alpine template built first

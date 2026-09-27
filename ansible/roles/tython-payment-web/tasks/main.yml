@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: tython-payment-web
+# HOST: Tython — Debian, payment web app (SQLi)
+# OS:   Debian 12
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   Deploy payment web app whose DB queries are string-concatenated (SQLi) against Ashla. This is attack-path #1 into the shared DB. Static vulnerable code only.
+#
+# DEPENDS ON: Ashla (DB), Corellia (source w/ leaked creds)
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "tython-payment-web | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement tython-payment-web (Tython — Debian, payment web app (SQLi))"

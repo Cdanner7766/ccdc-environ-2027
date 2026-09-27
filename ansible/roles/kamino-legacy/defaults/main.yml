@@ -1,0 +1,9 @@
+---
+# Kamino — Windows Server 2016, legacy app/service host
+# ---------------------------------------------------------------------------
+# TODO (fill when we build this role): version-pinned package/app versions and
+# any tunables. Pin everything with an explicit version so re-runs don't drift.
+#
+# Example shape:
+#   kamino_legacy_app_version: "x.y.z"
+#   kamino_legacy_listen_port: 0

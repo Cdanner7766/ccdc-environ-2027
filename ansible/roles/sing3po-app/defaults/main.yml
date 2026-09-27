@@ -1,0 +1,9 @@
+---
+# Sing3PO — Fedora (custom), app server
+# ---------------------------------------------------------------------------
+# TODO (fill when we build this role): version-pinned package/app versions and
+# any tunables. Pin everything with an explicit version so re-runs don't drift.
+#
+# Example shape:
+#   sing3po_app_app_version: "x.y.z"
+#   sing3po_app_listen_port: 0

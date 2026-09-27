@@ -1,0 +1,9 @@
+---
+# Bogan — Debian, mail server, accounts tied to AD
+# ---------------------------------------------------------------------------
+# TODO (fill when we build this role): version-pinned package/app versions and
+# any tunables. Pin everything with an explicit version so re-runs don't drift.
+#
+# Example shape:
+#   bogan_mail_app_version: "x.y.z"
+#   bogan_mail_listen_port: 0

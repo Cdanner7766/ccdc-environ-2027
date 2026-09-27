@@ -1,0 +1,13 @@
+---
+galaxy_info:
+  role_name: ashla_db
+  namespace: ccdc
+  author: CCDC range
+  description: "Ashla — Debian, DB backend (serves Tython + Wookie)"
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms: []
+# Build-order dependency (documentation only; Ludus deploys per-VM, so these
+# are enforced by the deploy order in README, not by role dependency chains).
+dependencies: []
+# Depends-on (informational): none for standup; consumed by Tython + Wookie

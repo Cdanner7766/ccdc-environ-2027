@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: wookie-web-ftp
+# HOST: Wookie — Alpine (custom), web/menu/FTP reading Ashla DB
+# OS:   Alpine 3.19 (custom Packer template)
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   Web/menu service that reads from Ashla (attack-path #2 into the same DB) plus an FTP service. Static vulnerable config only.
+#
+# DEPENDS ON: Ashla (DB), custom Alpine template built first
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "wookie-web-ftp | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement wookie-web-ftp (Wookie — Alpine (custom), web/menu/FTP reading Ashla DB)"

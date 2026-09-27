@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: ashla-db
+# HOST: Ashla — Debian, DB backend (serves Tython + Wookie)
+# OS:   Debian 12
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   DB serving two front ends. Seed schema + data. App DB account has broader grants than it needs (over-privileged) so SQLi from either front end is impactful. Creds match the ones leaked in Corellia.
+#
+# DEPENDS ON: none for standup; consumed by Tython + Wookie
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "ashla-db | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement ashla-db (Ashla — Debian, DB backend (serves Tython + Wookie))"

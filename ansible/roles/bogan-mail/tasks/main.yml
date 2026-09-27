@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: bogan-mail
+# HOST: Bogan — Debian, mail server, accounts tied to AD
+# OS:   Debian 12
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   Mail server whose mailbox accounts overlap 1:1 with AD users on Deathstar (same usernames, reused/weak passwords) so mail compromise and AD compromise cross over.
+#
+# DEPENDS ON: Deathstar (AD user list must exist)
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "bogan-mail | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement bogan-mail (Bogan — Debian, mail server, accounts tied to AD)"

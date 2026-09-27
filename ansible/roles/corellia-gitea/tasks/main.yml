@@ -1,0 +1,21 @@
+---
+###############################################################################
+# ROLE: corellia-gitea
+# HOST: Corellia — Rocky Linux, Gitea w/ leaked DB creds
+# OS:   Rocky Linux 9
+#
+# STANDS UP:  TODO — the service/app this host provides.
+#
+# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
+# scripting):
+#   Gitea hosting Tython's source repo with committed secrets (real Ashla DB creds) in history and/or an exposed .git/ dir. This bridges a low-priv web foothold to DB creds. Static repo content only.
+#
+# DEPENDS ON: Ashla (creds must match), Tython (hosts its source)
+#
+# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
+# are idempotent and non-drifting.
+###############################################################################
+
+- name: "corellia-gitea | placeholder — role not yet implemented"
+  ansible.builtin.debug:
+    msg: "TODO: implement corellia-gitea (Corellia — Rocky Linux, Gitea w/ leaked DB creds)"
