@@ -2,26 +2,120 @@
 ###############################################################################
 # ROLE: deathstar-ad
 # HOST: Deathstar — Windows Server 2019 (packet .105)
-# OS:   Windows Server 2019
 #
-# STANDS UP:  AD forest root (bars.local), DNS, auth services. Domain join +
-#             DNS for members is handled natively by Ludus (role: primary-dc).
+# STANDS UP (on top of Ludus's native primary-dc promotion of bars.local):
+#   - Relaxes the domain password policy so weak lab passwords are valid.
+#   - Creates the StarBar OU, groups, and the staff AD users.
+#   - Creates a kerberoastable service account (registered SPN, weak password).
+#   - Publishes forward DNS A-records for the Linux service hosts.
 #
-# INTENTIONAL MISCONFIG (static config only — no attack scripting):
-#   - Create the AD user set that Bogan mailboxes mirror 1:1.
-#   - A service account with a registered SPN and a weak password
-#     (kerberoastable target).
-#   - A local-admin password reused on Tat10ine (credential-reuse path).
-#   - Leave crackable password hashes / recoverable account material so the
-#     packet's AD-hash / SAM recovery scenario is reproducible.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - Weak/dictionary passwords => crackable AD hashes (packet -50 scenario).
+#   - SPN on a service account => kerberoastable.
+#   - Local-admin credential (ccdc_local_admin) is the canonical value reused
+#     on Tat10ine; the reuse itself is applied by the tat10ine role.
 #
-# DATA MODEL (per packet Red Team deduction table): AD hashes/SAM are a scored
-# recovery target — seed realistic weak passwords so cracking is feasible.
-#
-# DEPENDS ON: none (forest root — must exist FIRST).
-# Pin all package/app versions in defaults/main.yml.
+# Reads shared identities/secrets from global_role_vars (source of truth).
 ###############################################################################
 
-- name: "deathstar-ad | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement deathstar-ad (AD DC + DNS + auth)"
+- name: Assert shared identity vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_domain is defined
+      - ccdc_ad_users is defined and (ccdc_ad_users | length) > 0
+      - ccdc_ad_service_account is defined
+    fail_msg: >-
+      Shared vars missing. Set ccdc_domain / ccdc_ad_users /
+      ccdc_ad_service_account in global_role_vars (see ludus-range-config.yml).
+      For standalone dev runs pass them with: -e @vars.yml
+
+# --- 1. Relax the default domain password policy (MUST precede user create) --
+- name: Relax default domain password policy (lab-weak, crackable)
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      Set-ADDefaultDomainPasswordPolicy -Identity '{{ ccdc_domain.fqdn }}' `
+        -ComplexityEnabled ${{ 'true' if deathstar_pw_complexity_enabled else 'false' }} `
+        -MinPasswordLength {{ deathstar_pw_min_length }} `
+        -MinPasswordAge (New-TimeSpan -Days {{ deathstar_pw_min_age_days }}) `
+        -MaxPasswordAge (New-TimeSpan -Days {{ deathstar_pw_max_age_days }})
+  changed_when: true
+
+# --- 2. Organizational unit -------------------------------------------------
+- name: Create StarBar OU
+  microsoft.ad.ou:
+    name: StarBar
+    path: "DC={{ ccdc_domain.fqdn.split('.') | join(',DC=') }}"
+    state: present
+
+# --- 3. Groups --------------------------------------------------------------
+- name: Create AD groups
+  microsoft.ad.group:
+    name: "{{ item }}"
+    scope: global
+    path: "{{ ccdc_domain.ou }}"
+    state: present
+  loop: "{{ deathstar_groups }}"
+
+# --- 4. Staff users (weak passwords; mirrored to Bogan where mail:true) -----
+- name: Create staff AD users
+  microsoft.ad.user:
+    name: "{{ item.sam }}"
+    upn: "{{ item.sam }}@{{ ccdc_domain.fqdn }}"
+    display_name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    password_never_expires: true
+    update_password: on_create
+    groups:
+      set: "{{ item.groups }}"
+    path: "{{ ccdc_domain.ou }}"
+    state: present
+  loop: "{{ ccdc_ad_users }}"
+  loop_control:
+    label: "{{ item.sam }}"
+  no_log: true
+
+# --- 5. Kerberoastable service account (SPN registered) ---------------------
+- name: Create kerberoastable service account
+  microsoft.ad.user:
+    name: "{{ ccdc_ad_service_account.sam }}"
+    upn: "{{ ccdc_ad_service_account.sam }}@{{ ccdc_domain.fqdn }}"
+    display_name: "{{ ccdc_ad_service_account.name }}"
+    password: "{{ ccdc_ad_service_account.password }}"
+    password_never_expires: true
+    update_password: on_create
+    spn:
+      set:
+        - "{{ ccdc_ad_service_account.spn }}"
+    path: "{{ ccdc_domain.ou }}"
+    state: present
+  no_log: true
+
+# --- 6. Forward DNS A-records for the Linux service hosts -------------------
+- name: Discover the range /24 prefix from the DC's own 10.x address
+  ansible.windows.win_shell: >-
+    (Get-NetIPAddress -AddressFamily IPv4 |
+     Where-Object { $_.IPAddress -like '10.*' } |
+     Select-Object -First 1).IPAddress
+  register: deathstar_dc_ip
+  changed_when: false
+  when: deathstar_manage_dns | bool
+
+- name: Set subnet prefix fact
+  ansible.builtin.set_fact:
+    ccdc_subnet_prefix: "{{ deathstar_dc_ip.stdout | trim | regex_replace('\\.\\d+$', '') }}"
+  when: deathstar_manage_dns | bool
+
+- name: Publish A-records for Linux hosts in bars.local
+  community.windows.win_dns_record:
+    name: "{{ item.name }}"
+    zone: "{{ ccdc_domain.fqdn }}"
+    type: A
+    value: "{{ ccdc_subnet_prefix }}.{{ item.octet }}"
+    state: present
+  loop: "{{ ccdc_dns_hosts }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - deathstar_manage_dns | bool
+    - ccdc_dns_hosts is defined

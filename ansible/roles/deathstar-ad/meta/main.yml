@@ -3,11 +3,14 @@ galaxy_info:
   role_name: deathstar_ad
   namespace: ccdc
   author: CCDC range
-  description: "Deathstar — Windows Server 2019, AD DC + DNS + auth"
+  description: "Deathstar — Windows Server 2019, AD DC + DNS + auth (identity foundation)"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Windows
+      versions: [2019]
 dependencies: []
-# Depends-on (informational): none (forest root — must exist FIRST)
+# Depends-on (informational): none — forest root, must be built FIRST.
+# Requires collections: microsoft.ad, ansible.windows, community.windows
+# (pinned in ansible/requirements.yml). Runs AFTER Ludus's native primary-dc
+# role has promoted the DC and created the bars.local domain + DNS.

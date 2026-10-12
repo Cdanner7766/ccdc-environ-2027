@@ -1,2 +1,2 @@
 ---
-# Deathstar — Windows Server 2019, AD DC + DNS + auth — handlers (service restarts, etc.). TODO.
+# deathstar-ad — no service restarts needed; AD/DNS changes apply immediately.

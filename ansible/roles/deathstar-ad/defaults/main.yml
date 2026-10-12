@@ -1,9 +1,24 @@
 ---
-# Deathstar — Windows Server 2019, AD DC + DNS + auth
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   deathstar_ad_app_version: "x.y.z"
-#   deathstar_ad_listen_port: 0
+# deathstar-ad — role-specific knobs (non-shared).
+# Shared identities/secrets (ccdc_ad_users, ccdc_ad_service_account,
+# ccdc_domain, ccdc_db, ccdc_dns_hosts, ccdc_local_admin) are the CANONICAL
+# source of truth in global_role_vars (ludus-range-config.yml). This role
+# READS them; it does not redefine them, to avoid drift.
+
+# Password policy is relaxed so the intentionally weak lab passwords are
+# accepted and remain crackable (the packet's AD-hash recovery scenario).
+deathstar_pw_complexity_enabled: false
+deathstar_pw_min_length: 4
+deathstar_pw_min_age_days: 0
+deathstar_pw_max_age_days: 0        # 0 = never expire (lab stability)
+
+# AD groups created under the StarBar OU. User records in ccdc_ad_users
+# reference these names.
+deathstar_groups:
+  - Accounting
+  - Bartenders
+  - Karaoke
+  - Staff
+
+# Create forward DNS A-records for the Linux service hosts. Set false to skip.
+deathstar_manage_dns: true

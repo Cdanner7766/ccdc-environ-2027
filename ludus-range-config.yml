@@ -25,7 +25,68 @@
 #          All templates are native Ludus images (no Packer builds).
 ###############################################################################
 
-global_role_vars: {}   # TODO: shared vars (e.g. common repo pin).
+# ===========================================================================
+# CANONICAL SOURCE OF TRUTH for shared identities & secrets.
+# Ludus injects global_role_vars into EVERY host's play, so every role reads
+# the SAME values here instead of hardcoding its own copy. This is what keeps
+# the cross-host chains honest: the DB creds Corellia leaks are the same ones
+# Ashla grants and Tython/Wookie use; the mailbox users on Bogan are the same
+# AD users Deathstar creates.
+#
+# These are INTENTIONALLY WEAK, SYNTHETIC lab credentials for an isolated
+# practice range. They are meant to be committed. Do not reuse anywhere real.
+# Change a value here once and every consuming role picks it up on redeploy.
+# ===========================================================================
+global_role_vars:
+  ccdc_domain:
+    fqdn: bars.local
+    netbios: BARS
+    ou: "OU=StarBar,DC=bars,DC=local"
+
+  # AD users. mail:true => mirrored 1:1 as a Bogan mailbox with the SAME
+  # password (the mail<->AD overlap chain). Passwords are weak/dictionary on
+  # purpose so AD hashes are crackable (packet's -50 AD-hash scenario).
+  ccdc_ad_users:
+    - { sam: wuher,   name: "Wuher Mos",     password: "bluemilk",   groups: [Accounting], mail: true, note: "day bartender / the BOSS (Tat10ine)" }
+    - { sam: ackmena, name: "Ackmena Night", password: "cantina1",   groups: [Bartenders], mail: true }
+    - { sam: figrin,  name: "Figrin Dan",    password: "karaoke",    groups: [Karaoke],    mail: true, note: "band / karaoke lead" }
+    - { sam: greedo,  name: "Greedo Rodian", password: "shotfirst",  groups: [Accounting], mail: true }
+    - { sam: momaw,   name: "Momaw Nadon",   password: "hammerhead", groups: [Staff],      mail: true }
+
+  # Service account with a registered SPN = kerberoastable. Weak-ish password
+  # chosen to be crackable from a captured TGS (packet's AD scenario).
+  ccdc_ad_service_account:
+    sam: svc_karaoke
+    name: "Karaoke Service"
+    password: "Summer2026"
+    spn: "HTTP/sing3po.bars.local"
+    note: "kerberoastable SPN account"
+
+  # Local-admin credential reused across workstations (applied on Tat10ine).
+  ccdc_local_admin:
+    username: localadmin
+    password: "Password1!"
+    note: "same local-admin pw reused on workstations (cred-reuse path)"
+
+  # Shared DB on Ashla. app_user is OVER-PRIVILEGED. app_password is the secret
+  # that gets committed into Corellia's Gitea repo and used by Tython + Wookie.
+  ccdc_db:
+    host: ashla.bars.local
+    port: 3306
+    name: starbar_payments
+    app_user: starbar_app
+    app_password: "Sn1ppet-DB-2026"
+    root_password: "r00tAshla2026!"
+
+  # Linux service hosts to publish as DNS A-records in bars.local so configs
+  # can use names (e.g. ashla.bars.local) rather than raw IPs.
+  ccdc_dns_hosts:
+    - { name: tython,   octet: 201 }
+    - { name: ashla,    octet: 202 }
+    - { name: bogan,    octet: 203 }
+    - { name: sing3po,  octet: 134 }
+    - { name: wookie,   octet: 20 }
+    - { name: corellia, octet: 253 }
 
 # Single flat segment matching the packet. All hosts share VLAN 10, so they
 # are on one L2 network (10.x.10.0/24). No inter-VLAN rules: the packet network
