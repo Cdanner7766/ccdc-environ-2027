@@ -3,11 +3,12 @@ galaxy_info:
   role_name: tat10ine_workstation
   namespace: ccdc
   author: CCDC range
-  description: "Tat10ine — Windows 10, domain-joined workstation"
+  description: "Tat10ine — Windows 10 accounting/boss workstation; reused local admin + sensitive files"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Windows
+      versions: [10]
 dependencies: []
-# Depends-on (informational): Deathstar (AD/DNS must exist before join)
+# Depends-on (informational): Deathstar (AD/DNS; native domain join). The
+# local-admin password mirrors ccdc_local_admin, reused across workstations.

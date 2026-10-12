@@ -1,23 +1,59 @@
 ---
 ###############################################################################
 # ROLE: tat10ine-workstation
-# HOST: Tat10ine — Windows 10 (packet .9)
-# OS:   Windows 10
+# HOST: Tat10ine — Windows 10 (packet .9) — Accounting + the BOSS's computer
 #
-# STANDS UP:  Accounting workstation / the BOSS's computer. Domain join is
-#             native (Ludus role: member -> Deathstar).
+# STANDS UP:  The accounting / owner workstation. Domain join is native
+#             (Ludus role: member -> Deathstar).
 #
-# INTENTIONAL MISCONFIG (static config only):
-#   - Local-admin credential reuse from Deathstar + cached domain creds
-#     (DC <-> workstation pivot).
-#   - Sensitive "accounting" / boss files on disk (corporate-data recovery
-#     target per packet deduction table: config files / corporate data = -25,
-#     PII = -200).
-#
-# DEPENDS ON: Deathstar (AD/DNS must exist before join).
-# Pin all versions in defaults/main.yml.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - A local administrator account (ccdc_local_admin) with the SAME password
+#     reused across workstations -> AD/workstation lateral-movement path.
+#   - Sensitive accounting/owner files on disk: synthetic payroll (with fake
+#     bank fields) and a customer PII list (packet -25 corporate-data / -200
+#     PII targets), plus an owner note that discloses the reused local-admin
+#     password (a recoverable sensitive file that bridges to lateral movement).
+#   - Cached domain credentials are an inherent property of a domain-joined
+#     workstation; nothing extra is scripted for that.
 ###############################################################################
 
-- name: "tat10ine-workstation | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement tat10ine-workstation (accounting + boss workstation)"
+- name: Assert shared vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_local_admin is defined
+      - ccdc_local_admin.username is defined
+      - ccdc_local_admin.password is defined
+    fail_msg: "ccdc_local_admin.* missing — set it in global_role_vars."
+
+- name: Create the reused local administrator account
+  ansible.windows.win_user:
+    name: "{{ ccdc_local_admin.username }}"
+    password: "{{ ccdc_local_admin.password }}"
+    password_never_expires: true
+    groups:
+      - Administrators
+    groups_action: add
+    state: present
+  no_log: true
+
+- name: Create the accounting directory
+  ansible.windows.win_file:
+    path: "{{ tat10ine_accounting_dir }}"
+    state: directory
+
+- name: Drop synthetic accounting / PII files
+  ansible.windows.win_copy:
+    src: accounting/
+    dest: "{{ tat10ine_accounting_dir }}\\"
+
+- name: Drop the owner's note disclosing the reused local-admin password
+  ansible.windows.win_copy:
+    dest: "{{ tat10ine_accounting_dir }}\\boss_notes.txt"
+    content: |
+      STAR BARS - owner notes (do not share)
+      ---------------------------------------
+      Reminder: the local admin account is the same on every front-of-house PC.
+        user: {{ ccdc_local_admin.username }}
+        pass: {{ ccdc_local_admin.password }}
+      Need to rotate this someday. Also need to stop writing it down.
+  no_log: true

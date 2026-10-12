@@ -1,9 +1,6 @@
 ---
-# Tat10ine — Windows 10, domain-joined workstation
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   tat10ine_workstation_app_version: "x.y.z"
-#   tat10ine_workstation_listen_port: 0
+# tat10ine-workstation — role-specific knobs (non-shared).
+# The reused local-admin credential comes from the canonical ccdc_local_admin
+# (global_role_vars). Domain join is native (Ludus role: member).
+
+tat10ine_accounting_dir: 'C:\Accounting'
