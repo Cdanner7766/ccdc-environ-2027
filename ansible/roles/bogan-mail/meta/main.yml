@@ -3,11 +3,13 @@ galaxy_info:
   role_name: bogan_mail
   namespace: ccdc
   author: CCDC range
-  description: "Bogan — Debian, mail server, accounts tied to AD"
+  description: "Bogan — Debian 12 mail server; accounts mirror AD users (reused creds)"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Debian
+      versions: [bookworm]
 dependencies: []
-# Depends-on (informational): Deathstar (AD user list must exist)
+# Depends-on (informational): Deathstar defines the canonical AD users whose
+# names+passwords these mailboxes mirror. Build Deathstar first so the account
+# set is settled. Name resolution is local via /etc/hosts.

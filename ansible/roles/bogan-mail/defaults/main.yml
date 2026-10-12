@@ -1,9 +1,14 @@
 ---
-# Bogan — Debian, mail server, accounts tied to AD
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   bogan_mail_app_version: "x.y.z"
-#   bogan_mail_listen_port: 0
+# bogan-mail — role-specific knobs (non-shared).
+# The mailbox users and their passwords come from the canonical ccdc_ad_users
+# (global_role_vars): every user with mail:true becomes a local mail account
+# with the SAME password as their AD account (the mail<->AD overlap). Changing
+# a password in global_role_vars changes it in both AD and mail on redeploy.
+
+bogan_packages:
+  - postfix
+  - dovecot-imapd
+  - dovecot-pop3d
+
+# Login shell for mail-only accounts.
+bogan_mail_shell: /usr/sbin/nologin
