@@ -1,21 +1,27 @@
 ---
 ###############################################################################
 # ROLE: deathstar-ad
-# HOST: Deathstar — Windows Server 2019, AD DC + DNS + auth
+# HOST: Deathstar — Windows Server 2019 (packet .105)
 # OS:   Windows Server 2019
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  AD forest root (bars.local), DNS, auth services. Domain join +
+#             DNS for members is handled natively by Ludus (role: primary-dc).
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   Create AD users/OUs/GPO. Seed the user accounts that Bogan mail maps to. Weak/reused local-admin + service-account patterns for realistic AD attack paths (kerberoast-able SPN, etc.). All static config.
+# INTENTIONAL MISCONFIG (static config only — no attack scripting):
+#   - Create the AD user set that Bogan mailboxes mirror 1:1.
+#   - A service account with a registered SPN and a weak password
+#     (kerberoastable target).
+#   - A local-admin password reused on Tat10ine (credential-reuse path).
+#   - Leave crackable password hashes / recoverable account material so the
+#     packet's AD-hash / SAM recovery scenario is reproducible.
 #
-# DEPENDS ON: none (forest root — must exist FIRST)
+# DATA MODEL (per packet Red Team deduction table): AD hashes/SAM are a scored
+# recovery target — seed realistic weak passwords so cracking is feasible.
 #
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# DEPENDS ON: none (forest root — must exist FIRST).
+# Pin all package/app versions in defaults/main.yml.
 ###############################################################################
 
 - name: "deathstar-ad | placeholder — role not yet implemented"
   ansible.builtin.debug:
-    msg: "TODO: implement deathstar-ad (Deathstar — Windows Server 2019, AD DC + DNS + auth)"
+    msg: "TODO: implement deathstar-ad (AD DC + DNS + auth)"

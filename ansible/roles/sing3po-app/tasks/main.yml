@@ -1,21 +1,21 @@
 ---
 ###############################################################################
 # ROLE: sing3po-app
-# HOST: Sing3PO — Fedora (custom), app server
-# OS:   Fedora 40 (custom Packer template)
+# HOST: Sing3PO — Fedora 40 (CUSTOM Packer template) (packet .134)
+# OS:   Fedora 40
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  "THE Karaoke Machine" — the karaoke application server.
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   App server tier. TODO: decide the specific service + its realistic dependency/weakness during buildout. Static config only.
+# INTENTIONAL MISCONFIG (static config only):
+#   - Karaoke app service. It MAY consume Ashla's data-exchange DB; if so, that
+#     is a 3rd logical DB consumer. Keep scope tight (realism over breadth):
+#     decide at buildout whether Sing3PO reads Ashla or stands alone, and wire
+#     at most one realistic, chained weakness.
 #
-# DEPENDS ON: custom Fedora template built first
-#
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# DEPENDS ON: custom Fedora template built first; optionally Ashla.
+# Pin all versions in defaults/main.yml.
 ###############################################################################
 
 - name: "sing3po-app | placeholder — role not yet implemented"
   ansible.builtin.debug:
-    msg: "TODO: implement sing3po-app (Sing3PO — Fedora (custom), app server)"
+    msg: "TODO: implement sing3po-app (karaoke machine)"

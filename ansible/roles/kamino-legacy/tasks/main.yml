@@ -1,21 +1,22 @@
 ---
 ###############################################################################
 # ROLE: kamino-legacy
-# HOST: Kamino — Windows Server 2016, legacy app/service host
+# HOST: Kamino — Windows Server 2016 (packet .11)
 # OS:   Windows Server 2016
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  "Karaoke Droid" host with a local AI customer-support app, on a
+#             legacy Server 2016 box. Domain member.
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   Legacy service host. Wire a realistic legacy/unpatched-config weakness (e.g. outdated service config, weak service account) consistent with a 2016 box left behind. Static config.
+# INTENTIONAL MISCONFIG (static config only):
+#   - Legacy/unpatched service configuration appropriate to a 2016 box left
+#     behind by the former IT team.
+#   - Weak service-account for the droid/support app (reused or guessable),
+#     consistent with the AD credential-reuse theme.
 #
-# DEPENDS ON: Deathstar (domain member)
-#
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# DEPENDS ON: Deathstar (domain member).
+# Pin all versions in defaults/main.yml.
 ###############################################################################
 
 - name: "kamino-legacy | placeholder — role not yet implemented"
   ansible.builtin.debug:
-    msg: "TODO: implement kamino-legacy (Kamino — Windows Server 2016, legacy app/service host)"
+    msg: "TODO: implement kamino-legacy (karaoke droid + local AI support, legacy 2016)"

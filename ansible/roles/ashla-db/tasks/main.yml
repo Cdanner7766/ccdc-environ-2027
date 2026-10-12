@@ -1,21 +1,27 @@
 ---
 ###############################################################################
 # ROLE: ashla-db
-# HOST: Ashla — Debian, DB backend (serves Tython + Wookie)
+# HOST: Ashla — Debian 12 (packet .202)
 # OS:   Debian 12
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  Data Exchange & DB server. MariaDB/MySQL (port 3306) serving the
+#             payment app (Tython) and the corporate site/menu (Wookie) — the
+#             shared crown-jewel DB.
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   DB serving two front ends. Seed schema + data. App DB account has broader grants than it needs (over-privileged) so SQLi from either front end is impactful. Creds match the ones leaked in Corellia.
+# INTENTIONAL MISCONFIG (static config only):
+#   - Seed schema + data including customer CREDIT-CARD numbers and PII
+#     (name/address/phone). Per the packet deduction table these are the
+#     highest-value recovery targets (CC -50, PII -200).
+#   - App DB account is OVER-PRIVILEGED (more grants than the front ends need)
+#     so SQLi from either front end is impactful.
+#   - DB credentials MUST equal the ones committed in Corellia's Gitea repo.
 #
-# DEPENDS ON: none for standup; consumed by Tython + Wookie
-#
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# DEPENDS ON: nothing to stand up; consumed by Tython + Wookie; creds mirrored
+#             in Corellia. Decide final CC/PII seed set here, then sync the
+#             leaked creds in corellia-gitea.
+# Pin MariaDB + all versions in defaults/main.yml.
 ###############################################################################
 
 - name: "ashla-db | placeholder — role not yet implemented"
   ansible.builtin.debug:
-    msg: "TODO: implement ashla-db (Ashla — Debian, DB backend (serves Tython + Wookie))"
+    msg: "TODO: implement ashla-db (shared MariaDB with CC/PII)"

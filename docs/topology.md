@@ -1,74 +1,86 @@
 # Topology & attack-chain detail
 
-This file records the *why* behind each host so that, as roles are filled in
-one at a time, the cross-host dependencies stay intact. Nothing here is an
-attack script — it documents the static conditions each role must create.
+Records the *why* behind each host so cross-host dependencies stay intact as
+roles are filled in one at a time. Nothing here is an attack script — it
+documents the static conditions each role must create. Source of truth for
+host facts is the WRCCDC Inv6 / STAR BARS team packet.
 
-## Naming / addressing
+## Network / addressing
 
-- Domain: `bars.local` (forest root on Deathstar)
-- Ludus assigns `10.<range_octet>.<vlan>.<ip_last_octet>`
+- **Flat single subnet** (packet: `192.168.1.0/24` behind pfSense "Routooine"
+  .2). Here: Ludus native router, all hosts on VLAN 10 → `10.<range>.10.0/24`.
+- Exact packet last octets preserved.
 
-| Host      | VLAN | last octet | Notes |
-|-----------|------|-----------|-------|
-| Deathstar | 10   | 10        | DC, DNS, forest root |
-| Tat10ine  | 10   | 20        | Domain member (Win10) |
-| Kamino    | 10   | 30        | Domain member (Win2016 legacy) |
-| Tython    | 20   | 10        | Payment web front end |
-| Wookie    | 20   | 20        | Web/menu + FTP front end |
-| Bogan     | 20   | 30        | Mail |
-| Ashla     | 30   | 10        | Shared DB |
-| Corellia  | 30   | 20        | Gitea |
-| Sing3PO   | 30   | 30        | App server |
+| Host      | OS                  | Last octet | Packet role |
+|-----------|---------------------|-----------|-------------|
+| Routooine | pfSense (→ Ludus router) | .2   | Router / firewall |
+| Deathstar | Windows Server 2019 | .105      | AD / DNS / Auth |
+| Kamino    | Windows Server 2016 | .11       | Karaoke droid + local AI customer support |
+| Tat10ine  | Windows 10          | .9        | Accounting + the BOSS's computer |
+| Tython    | Debian              | .201      | Payment system app |
+| Ashla     | Debian              | .202      | Data exchange + DB server |
+| Bogan     | Debian              | .203      | Mail server |
+| Sing3PO   | Fedora              | .134      | THE karaoke machine |
+| Wookie    | Alpine              | .20       | Corporate site + menu + FTP |
+| Corellia  | Rocky               | .253      | Gitea |
 
 ## Per-host intent (what each role wires)
 
-### Deathstar (AD/DNS)
-- Forest root DC. Native Ludus `primary-dc`.
+### Deathstar (AD/DNS, .105)
+- Forest root DC (`bars.local`), native Ludus `primary-dc`.
 - Creates the AD user set that **Bogan** mailboxes mirror.
-- Realistic AD weaknesses to seed (static): a service account with an SPN and a
-  weak password (kerberoast target), and a local-admin password reused on
-  Tat10ine. No attack tooling — just the accounts/config that make those paths
-  exist.
+- Static weaknesses: kerberoastable SPN account (weak pw), local-admin pw
+  reused on Tat10ine, realistic weak passwords so AD hash / SAM recovery
+  (scored -50 in the packet) is feasible.
 
-### Tat10ine (workstation)
-- Native domain join to Deathstar.
+### Tat10ine (workstation, .9)
+- Accounting + the boss's box. Native domain join.
 - Local-admin credential reuse + cached domain creds → DC⇄workstation pivot.
+- Sensitive accounting/corporate files on disk (config/corporate data -25,
+  PII -200).
 
-### Kamino (legacy Win2016)
-- Domain member. Legacy service with an outdated/weak config appropriate to a
-  box left behind (decide specifics at buildout).
+### Kamino (legacy Win2016, .11)
+- Karaoke droid host with a local AI customer-support app. Domain member.
+- Legacy/unpatched service config + weak service account.
 
-### Tython (payment web) — SQLi path #1
-- Web app with string-concatenated SQL against **Ashla**.
-- Its **source lives in Corellia Gitea** with committed Ashla creds.
+### Tython (payment web, .201) — SQLi path #1
+- Payment app with string-concatenated SQL against **Ashla**.
+- Source lives in Corellia Gitea with committed Ashla creds.
 
-### Wookie (web/menu/FTP) — read path #2
-- Separate front end that also reads **Ashla** → same DB, second foothold.
-- FTP service (static vulnerable config).
+### Ashla (DB, .202) — shared crown jewel
+- MariaDB/MySQL (3306) serving Tython + Wookie.
+- Seeds customer **credit-card numbers + PII** (scored -50 / -200).
+- App DB account over-privileged so SQLi is impactful.
+- Creds equal the ones committed in Corellia.
 
-### Bogan (mail) — mail⇄AD overlap
+### Bogan (mail, .203) — mail⇄AD overlap
 - Mailbox accounts == Deathstar AD usernames, reused/weak passwords.
 
-### Ashla (DB) — the shared crown jewel
-- Serves Tython + Wookie. App DB account over-privileged so SQLi is impactful.
-- Creds must equal the ones committed in Corellia.
+### Sing3PO (karaoke machine, .134)
+- Karaoke app server. May consume Ashla data-exchange (decide at buildout;
+  keep scope tight — one chained weakness, not many).
 
-### Corellia (Gitea) — creds-leak bridge
+### Wookie (site/menu/FTP, .20) — read path #2
+- Corporate site + menu reading **Ashla** (second DB foothold) + FTP service.
+
+### Corellia (Gitea, .253) — creds-leak bridge
 - Hosts Tython's repo; committed secrets (real Ashla creds) in history and/or
   an exposed `.git/`. Bridges low-priv web foothold → DB creds.
 
-### Sing3PO (app server)
-- App tier; specific service + dependency decided at buildout.
+## Logical reachability (flat network)
 
-## Firewall rules ↔ chains (must stay in sync with ludus-range-config.yml)
+The network is flat, so **every host can reach every other host** — there are
+no router-enforced inter-host rules (matching the real competition). The chains
+below are therefore *service-level / logical* dependencies, not firewall rules.
+If you choose to practice containment, enforce it host-based and verify it.
 
-| Rule | Enables chain |
-|------|---------------|
-| DMZ→DC, Data→DC (to .10) | auth/DNS for all tiers |
-| Tython→Ashla:3306 | SQLi path #1 |
-| Wookie→Ashla:3306 | read path #2 |
-| Tython→Corellia:22,3000 | creds-leak bridge |
+| Logical dependency        | Why it exists |
+|---------------------------|---------------|
+| all hosts → Deathstar     | auth / DNS |
+| Tython → Ashla (3306)     | SQLi path #1 |
+| Wookie → Ashla (3306)     | read path #2 |
+| Tython → Corellia (22/3000) | creds-leak bridge |
+| Bogan → Deathstar (LDAP)  | mail⇄AD account mapping |
 
-> When Ashla's DB engine/port is finalized, update the `3306` rules and the
-> README/topology tables together.
+> When Ashla's engine/port is finalized (MariaDB:3306 assumed), update this
+> table and the README together.

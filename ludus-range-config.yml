@@ -1,75 +1,86 @@
 ###############################################################################
 # CCDC practice range — WRCCDC Inv6 / STAR BARS topology
-# 9 interconnected hosts + Ludus native router
+# 9 hosts on a single flat /24, behind the Ludus native router.
+#
+# Faithful to the Inv6 team packet: the competition network is one flat subnet
+# (192.168.1.0/24) behind a single router/firewall. We reproduce the exact
+# per-host last octets from the packet so the range is recognizable. Ludus
+# addresses hosts as 10.<range_second_octet>.<vlan>.<ip_last_octet>; every host
+# sits on one VLAN here, so the segment is flat exactly as in the packet.
+#
+# Packet router is pfSense ("Routooine", .2); per project decision we use the
+# Ludus NATIVE router instead (no pfSense, no manual iptables). Defensive
+# micro-segmentation, if practiced, is done host-based (firewalld/ufw/Windows
+# Firewall) inside the roles — matching how a real blue team would harden a
+# flat CCDC network.
 #
 # Apply with:  ludus range config set -f ludus-range-config.yml
 #              ludus range deploy
 #
-# NOTE ON THIS FILE: this is the SKELETON. VM definitions, VLANs, and the
-# network (built-in firewall) rules are real and complete. Per-VM `role_vars`
-# that drive the intentional-misconfig wiring are stubbed with TODO markers;
-# we fill those in one role at a time as we build each Ansible role.
+# This is the SKELETON: VM defs + addressing are complete; per-VM `role_vars`
+# that drive intentional-misconfig wiring are stubbed (TODO), filled one role
+# at a time.
 #
-# Custom Ansible roles referenced under `roles:` must be installed into Ludus
-# first:   ludus ansible roles add -d ./ansible/roles/<role-name>
-# Custom templates (Wookie/Alpine, Sing3PO/Fedora) must be Packer-built and
-# added first: ludus templates add -d ./packer/<template>   &&  ludus templates build
+# Prereqs: add custom roles  (ludus ansible roles add -d ./ansible/roles/<r>)
+#          build custom templates (Wookie/Alpine, Sing3PO/Fedora) first.
 ###############################################################################
 
-# ---------------------------------------------------------------------------
-# Global settings shared by every VM in the range.
-# ---------------------------------------------------------------------------
-global_role_vars: {}   # TODO: shared vars (e.g. common repo pin) go here later.
+global_role_vars: {}   # TODO: shared vars (e.g. common repo pin).
+
+# Single flat segment matching the packet. All hosts share VLAN 10, so they
+# are on one L2 network (10.x.10.0/24). No inter-VLAN rules: the packet network
+# is flat. Keeping an explicit block documents the intent.
+network:
+  inter-vlan-default: ACCEPT   # single VLAN; nothing to filter at router level
+  external-default: ACCEPT
+  # No `rules:` — flat network by design. Host-level firewalling lives in roles.
 
 ludus:
-  # =========================================================================
-  # VLAN 10 — INTERNAL / ACTIVE DIRECTORY TIER
-  #   Deathstar (DC/DNS), Tat10ine (workstation), Kamino (legacy app host)
-  # =========================================================================
-
   # --- 1. Deathstar : Windows Server 2019 — AD DC + DNS + auth ------------
+  # Packet: .105  |  Role: Active Directory / DNS / Auth Services
   - vm_name: "{{ range_id }}-deathstar"
     hostname: "DEATHSTAR"
     template: win2019-server-x64-template
     vlan: 10
-    ip_last_octet: 10
+    ip_last_octet: 105
     ram_gb: 6
     cpus: 4
     windows:
       sysprep: true
-    # Ludus native domain role: promotes this box to the forest root DC.
-    # Everything with role: member below auto-joins this domain and gets its
-    # DNS pointed here. This is the dependency anchor for the whole range.
+    # Native Ludus domain role: forest root DC. Members below auto-join and
+    # get DNS pointed here. Dependency anchor for the whole range.
     domain:
       fqdn: bars.local
       role: primary-dc
     roles:
-      - ccdc-deathstar-ad        # TODO: users/OUs/GPO + Bogan<->AD account map
-    role_vars: {}                # TODO
+      - ccdc-deathstar-ad   # AD users/OUs/GPO; kerberoastable SPN; reused local-admin; crackable hashes
+    role_vars: {}           # TODO
 
-  # --- 2. Tat10ine : Windows 10 — domain-joined workstation ---------------
+  # --- 2. Tat10ine : Windows 10 — Accounting + the BOSS's computer -------
+  # Packet: .9  |  Role: Accounting and the BOSS's Computer
   - vm_name: "{{ range_id }}-tat10ine"
     hostname: "TAT10INE"
     template: win10-22h2-x64-enterprise-template
     vlan: 10
-    ip_last_octet: 20
+    ip_last_octet: 9
     ram_gb: 4
     cpus: 2
     windows:
       sysprep: true
     domain:
       fqdn: bars.local
-      role: member              # native domain join -> Deathstar
+      role: member          # native domain join -> Deathstar
     roles:
-      - ccdc-tat10ine-workstation  # TODO: local-admin reuse, cached creds
+      - ccdc-tat10ine-workstation  # local-admin reuse, cached creds, sensitive accounting/boss files
     role_vars: {}                  # TODO
 
-  # --- 8. Kamino : Windows Server 2016 — legacy app / service host --------
+  # --- 8. Kamino : Windows Server 2016 — Karaoke droid + local AI support -
+  # Packet: .11  |  Role: Karaoke Droid with Local AI for Customer Support
   - vm_name: "{{ range_id }}-kamino"
     hostname: "KAMINO"
     template: win2016-server-x64-template
     vlan: 10
-    ip_last_octet: 30
+    ip_last_octet: 11
     ram_gb: 4
     cpus: 2
     windows:
@@ -78,157 +89,89 @@ ludus:
       fqdn: bars.local
       role: member
     roles:
-      - ccdc-kamino-legacy       # TODO: legacy service, unpatched-config vuln
-    role_vars: {}                # TODO
+      - ccdc-kamino-legacy  # legacy 2016 service + droid/AI-support app, weak service-account config
+    role_vars: {}           # TODO
 
-  # =========================================================================
-  # VLAN 20 — DMZ / PUBLIC-FACING SERVICE TIER
-  #   Tython (payment web), Wookie (web/menu/FTP), Bogan (mail)
-  # =========================================================================
-
-  # --- 3. Tython : Debian — payment web app (SQLi) -----------------------
+  # --- 3. Tython : Debian — Payment System App (SQLi) --------------------
+  # Packet: .201  |  Role: Payment System App  (holds CC / PII data model)
   - vm_name: "{{ range_id }}-tython"
     hostname: "tython"
     template: debian-12-x64-server-template
-    vlan: 20
-    ip_last_octet: 10
+    vlan: 10
+    ip_last_octet: 201
     ram_gb: 2
     cpus: 2
     linux: true
     roles:
-      - ccdc-tython-payment-web  # TODO: web app w/ SQLi against Ashla
+      - ccdc-tython-payment-web  # payment web app, SQLi against Ashla; source lives in Corellia
     role_vars: {}                # TODO
 
-  # --- 7. Wookie : Alpine (CUSTOM Packer build) — web/menu/FTP ------------
+  # --- 4. Ashla : Debian — Data Exchange & DB Server ---------------------
+  # Packet: .202  |  Role: Data Exchange & DB Server (shared crown-jewel DB)
+  - vm_name: "{{ range_id }}-ashla"
+    hostname: "ashla"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 202
+    ram_gb: 2
+    cpus: 2
+    linux: true
+    roles:
+      - ccdc-ashla-db       # MariaDB serving Tython + Wookie; customer CC + PII; over-privileged app user
+    role_vars: {}           # TODO
+
+  # --- 5. Bogan : Debian — Mail Server (accounts tied to AD) -------------
+  # Packet: .203  |  Role: Mail Server
+  - vm_name: "{{ range_id }}-bogan"
+    hostname: "bogan"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 203
+    ram_gb: 2
+    cpus: 2
+    linux: true
+    roles:
+      - ccdc-bogan-mail     # mailbox users mirror Deathstar AD users; reused/weak passwords
+    role_vars: {}           # TODO
+
+  # --- 9. Sing3PO : Fedora (CUSTOM Packer build) — THE Karaoke Machine ---
+  # Packet: .134  |  Role: THE Karaoke Machine
+  - vm_name: "{{ range_id }}-sing3po"
+    hostname: "sing3po"
+    template: fedora-40-x64-server-template   # built by packer/sing3po-fedora
+    vlan: 10
+    ip_last_octet: 134
+    ram_gb: 2
+    cpus: 2
+    linux: true
+    roles:
+      - ccdc-sing3po-app    # karaoke app server; may consume Ashla data-exchange (decide at buildout)
+    role_vars: {}           # TODO
+
+  # --- 7. Wookie : Alpine (CUSTOM Packer build) — Site + Menu + FTP ------
+  # Packet: .20  |  Role: Corporate Site, Menu, and FTP applications
   - vm_name: "{{ range_id }}-wookie"
     hostname: "wookie"
     template: alpine-319-x64-server-template   # built by packer/wookie-alpine
-    vlan: 20
+    vlan: 10
     ip_last_octet: 20
     ram_gb: 1
     cpus: 1
     linux: true
     roles:
-      - ccdc-wookie-web-ftp      # TODO: second read path into Ashla + FTP
-    role_vars: {}                # TODO
+      - ccdc-wookie-web-ftp  # corporate site + menu reading Ashla (2nd DB path) + FTP service
+    role_vars: {}            # TODO
 
-  # --- 5. Bogan : Debian — mail server, accounts tied to AD ---------------
-  - vm_name: "{{ range_id }}-bogan"
-    hostname: "bogan"
-    template: debian-12-x64-server-template
-    vlan: 20
-    ip_last_octet: 30
-    ram_gb: 2
-    cpus: 2
-    linux: true
-    roles:
-      - ccdc-bogan-mail          # TODO: mail accounts overlapping AD users
-    role_vars: {}                # TODO
-
-  # =========================================================================
-  # VLAN 30 — BACKEND / DATA TIER
-  #   Ashla (DB), Corellia (Gitea), Sing3PO (app server)
-  # =========================================================================
-
-  # --- 4. Ashla : Debian — DB backend (serves Tython + Wookie) -----------
-  - vm_name: "{{ range_id }}-ashla"
-    hostname: "ashla"
-    template: debian-12-x64-server-template
-    vlan: 30
-    ip_last_octet: 10
-    ram_gb: 2
-    cpus: 2
-    linux: true
-    roles:
-      - ccdc-ashla-db            # TODO: DB serving two front ends
-    role_vars: {}                # TODO
-
-  # --- 6. Corellia : Rocky Linux — Gitea w/ leaked DB creds --------------
+  # --- 6. Corellia : Rocky Linux — Gitea (leaked DB creds) ---------------
+  # Packet: .253  |  Role: Gitea
   - vm_name: "{{ range_id }}-corellia"
     hostname: "corellia"
     template: rocky-9-x64-server-template
-    vlan: 30
-    ip_last_octet: 20
+    vlan: 10
+    ip_last_octet: 253
     ram_gb: 2
     cpus: 2
     linux: true
     roles:
-      - ccdc-corellia-gitea      # TODO: host Tython source + committed secrets
-    role_vars: {}                # TODO
-
-  # --- 9. Sing3PO : Fedora (CUSTOM Packer build) — app server ------------
-  - vm_name: "{{ range_id }}-sing3po"
-    hostname: "sing3po"
-    template: fedora-40-x64-server-template   # built by packer/sing3po-fedora
-    vlan: 30
-    ip_last_octet: 30
-    ram_gb: 2
-    cpus: 2
-    linux: true
-    roles:
-      - ccdc-sing3po-app         # TODO: app server tier
-    role_vars: {}                # TODO
-
-# ---------------------------------------------------------------------------
-# NETWORK SEGMENTATION — Ludus built-in firewall (applied on the native
-# router VM). Default-deny between VLANs; only the dependency paths that the
-# topology requires are opened. This is the whole point of the design: the
-# vulns chain across these specific, allowed paths, not across a flat LAN.
-#
-# IMPORTANT (br_netfilter): inter-VLAN rules below are only ENFORCED if the
-# Proxmox host has br_netfilter loaded and bridge-nf-call-iptables = 1.
-# See README "Known Ludus/Proxmox isolation gotchas" before trusting REJECT.
-# ---------------------------------------------------------------------------
-network:
-  inter-vlan-default: REJECT     # default-deny between all VLANs
-  external-default: ACCEPT       # VMs may reach out (updates, etc.)
-  rules:
-    # --- Auth/DNS: every tier must reach the DC (Deathstar, 10.x.10.10) ---
-    - name: "DMZ -> DC auth/dns"
-      vlan_src: 20
-      vlan_dst: 10
-      ip_last_octet_dst: 10
-      protocol: all
-      ports: all
-      action: ACCEPT
-    - name: "Data -> DC auth/dns"
-      vlan_src: 30
-      vlan_dst: 10
-      ip_last_octet_dst: 10
-      protocol: all
-      ports: all
-      action: ACCEPT
-
-    # --- SQLi path #1: Tython (payment web) -> Ashla (DB) ----------------
-    - name: "Tython -> Ashla DB"
-      vlan_src: 20
-      ip_last_octet_src: 10
-      vlan_dst: 30
-      ip_last_octet_dst: 10
-      protocol: tcp
-      ports: "3306"              # TODO: confirm engine port when we build Ashla
-      action: ACCEPT
-
-    # --- Read path #2: Wookie (web/menu) -> Ashla (DB) -------------------
-    - name: "Wookie -> Ashla DB"
-      vlan_src: 20
-      ip_last_octet_src: 20
-      vlan_dst: 30
-      ip_last_octet_dst: 10
-      protocol: tcp
-      ports: "3306"
-      action: ACCEPT
-
-    # --- Creds-leak bridge: Tython foothold -> Corellia (Gitea) ----------
-    - name: "Tython -> Corellia Gitea"
-      vlan_src: 20
-      ip_last_octet_src: 10
-      vlan_dst: 30
-      ip_last_octet_dst: 20
-      protocol: tcp
-      ports: "22,3000"           # git/ssh + Gitea http
-      action: ACCEPT
-
-    # --- Mail<->AD account mapping: Bogan -> DC (LDAP) -------------------
-    #     (covered by "DMZ -> DC" above; kept explicit for readability if
-    #      that broad rule is later tightened.)
+      - ccdc-corellia-gitea  # hosts Tython source w/ committed Ashla creds; exposed .git / secrets
+    role_vars: {}            # TODO

@@ -1,21 +1,23 @@
 ---
 ###############################################################################
 # ROLE: tat10ine-workstation
-# HOST: Tat10ine — Windows 10, domain-joined workstation
+# HOST: Tat10ine — Windows 10 (packet .9)
 # OS:   Windows 10
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  Accounting workstation / the BOSS's computer. Domain join is
+#             native (Ludus role: member -> Deathstar).
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   Domain join is native (Ludus). Wire local-admin credential reuse from Deathstar and cached-cred exposure so DC compromise <-> workstation pivots realistically.
+# INTENTIONAL MISCONFIG (static config only):
+#   - Local-admin credential reuse from Deathstar + cached domain creds
+#     (DC <-> workstation pivot).
+#   - Sensitive "accounting" / boss files on disk (corporate-data recovery
+#     target per packet deduction table: config files / corporate data = -25,
+#     PII = -200).
 #
-# DEPENDS ON: Deathstar (AD/DNS must exist before join)
-#
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# DEPENDS ON: Deathstar (AD/DNS must exist before join).
+# Pin all versions in defaults/main.yml.
 ###############################################################################
 
 - name: "tat10ine-workstation | placeholder — role not yet implemented"
   ansible.builtin.debug:
-    msg: "TODO: implement tat10ine-workstation (Tat10ine — Windows 10, domain-joined workstation)"
+    msg: "TODO: implement tat10ine-workstation (accounting + boss workstation)"
