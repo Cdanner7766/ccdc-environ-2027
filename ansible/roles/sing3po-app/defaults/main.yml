@@ -1,9 +1,12 @@
 ---
-# Sing3PO — Fedora (custom), app server
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   sing3po_app_app_version: "x.y.z"
-#   sing3po_app_listen_port: 0
+# sing3po-app — role-specific knobs (non-shared).
+# Stand-alone karaoke app (no DB path). Its single chained weakness is the
+# svc_karaoke credential (canonical ccdc_ad_service_account) stored on disk,
+# tying to the kerberoastable SPN on Deathstar.
+
+sing3po_packages:
+  - httpd
+  - firewalld
+
+sing3po_docroot: /var/www/html
+sing3po_conf_dir: /etc/starbar

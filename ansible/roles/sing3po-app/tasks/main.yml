@@ -1,20 +1,70 @@
 ---
 ###############################################################################
 # ROLE: sing3po-app
-# HOST: Sing3PO — Rocky Linux 9 (packet .134)
-# OS:   Rocky Linux 9  (packet OS is Fedora; using native Rocky — RPM-family)
+# HOST: Sing3PO — Rocky Linux 9 (packet .134) — THE Karaoke Machine
 #
-# STANDS UP:  "THE Karaoke Machine" — the karaoke application server.
+# STANDS UP:  Apache (httpd) serving the karaoke catalog page. Stand-alone:
+#             no database path (realism over breadth).
 #
-# INTENTIONAL MISCONFIG (static config only):
-#   - Karaoke app service. Scope kept tight (realism over breadth): stand-alone
-#     by default, at most one realistic, chained weakness. Revisit whether it
-#     should read Ashla's data-exchange DB at buildout.
-#
-# DEPENDS ON: none (optionally Ashla).
-# Pin all versions in defaults/main.yml.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - The karaoke service config stores the svc_karaoke domain credential in
+#     cleartext. A foothold here leaks that credential, which is ALSO
+#     kerberoastable from the network via the SPN registered on Deathstar.
 ###############################################################################
 
-- name: "sing3po-app | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement sing3po-app (karaoke machine)"
+- name: Assert shared vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_domain is defined
+      - ccdc_ad_service_account is defined
+    fail_msg: "ccdc_domain / ccdc_ad_service_account missing — set them in global_role_vars."
+
+- name: Install Apache + firewalld
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ sing3po_packages }}"
+    state: present
+
+- name: Deploy the karaoke page
+  become: true
+  ansible.builtin.copy:
+    src: karaoke/
+    dest: "{{ sing3po_docroot }}/"
+    mode: "0644"
+
+- name: Create the service config directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ sing3po_conf_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Write the karaoke service config (leaks svc_karaoke credential)
+  become: true
+  ansible.builtin.template:
+    src: karaoke.conf.j2
+    dest: "{{ sing3po_conf_dir }}/karaoke.conf"
+    mode: "0644"
+  no_log: true
+
+- name: Ensure firewalld is running
+  become: true
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Allow HTTP through firewalld
+  become: true
+  ansible.posix.firewalld:
+    service: http
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Ensure Apache is running and enabled
+  become: true
+  ansible.builtin.service:
+    name: httpd
+    state: started
+    enabled: true

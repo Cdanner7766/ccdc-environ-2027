@@ -150,6 +150,22 @@ docs/
 
 ## Status
 
-Scaffold. VM definitions and addressing (exact packet octets, flat /24) are
-complete, all on native Ludus templates; each Ansible role is a documented
-skeleton to be filled one at a time.
+All nine roles implemented on native Ludus templates; VM definitions and
+addressing (exact packet octets, flat /24) are complete. The four designed
+chains are wired end to end:
+
+- Two paths into the shared DB: Tython (SQLi) and Wookie (weak FTP -> readable
+  config.php creds).
+- Creds-leak bridge: Corellia Gitea (committed config.php) and Tython's served
+  .git/ both expose the live Ashla DB credential.
+- Mail <-> AD overlap: Bogan mailboxes mirror Deathstar AD users with reused
+  passwords.
+- AD <-> workstation: Tat10ine's reused local-admin account (plus an owner
+  note disclosing it); Sing3PO stores the kerberoastable svc_karaoke credential
+  whose SPN is registered on Deathstar.
+
+Not yet deploy-tested against live Ludus (Ansible is not installed in the
+authoring environment): YAML and module arguments are reviewed, but a first
+`ludus range deploy` is where collection/module quirks would surface. Known
+runtime dependencies: passlib/crypt on the control node (password_hash), and
+the Gitea binary checksum is left blank (fill corellia_gitea_sha256 to pin).

@@ -1,0 +1,11 @@
+# StarBar Karaoke service configuration.
+# The karaoke service is registered in AD under the SPN below and
+# authenticates as the karaoke service account. The credential is stored here
+# in cleartext (intentional, static misconfig): a foothold on this host leaks
+# the svc_karaoke domain credential, which is ALSO kerberoastable from the
+# network via the SPN registered on Deathstar. One coherent AD tie.
+[service]
+domain   = {{ ccdc_domain.fqdn }}
+spn      = {{ ccdc_ad_service_account.spn }}
+username = {{ ccdc_ad_service_account.sam }}
+password = {{ ccdc_ad_service_account.password }}
