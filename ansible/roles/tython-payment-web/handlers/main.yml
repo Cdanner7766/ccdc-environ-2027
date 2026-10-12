@@ -1,2 +1,6 @@
 ---
-# Tython — Debian, payment web app (SQLi) — handlers (service restarts, etc.). TODO.
+- name: reload apache
+  become: true
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded

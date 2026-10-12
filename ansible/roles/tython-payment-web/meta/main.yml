@@ -3,11 +3,13 @@ galaxy_info:
   role_name: tython_payment_web
   namespace: ccdc
   author: CCDC range
-  description: "Tython — Debian, payment web app (SQLi)"
+  description: "Tython — Debian 12, payment web app (SQLi) deployed from Gitea"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Debian
+      versions: [bookworm]
 dependencies: []
-# Depends-on (informational): Ashla (DB), Corellia (source w/ leaked creds)
+# Depends-on (DEPLOY ORDER): Corellia (Gitea up + repo seeded) and Ashla (DB
+# reachable). Build both before Tython. Name resolution for ashla/corellia is
+# handled locally via /etc/hosts here (does not require the DC's DNS).

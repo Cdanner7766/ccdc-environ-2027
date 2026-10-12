@@ -1,9 +1,25 @@
 ---
-# Tython — Debian, payment web app (SQLi)
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   tython_payment_web_app_version: "x.y.z"
-#   tython_payment_web_listen_port: 0
+# tython-payment-web — role-specific knobs (non-shared).
+# Shared DB creds (ccdc_db.*) and the host list (ccdc_dns_hosts) come from
+# global_role_vars. The app's own copy of the DB creds arrives inside the
+# cloned repo's config.php (committed on Corellia), so the running app uses
+# the same leaked credential.
+
+tython_packages:
+  - apache2
+  - php
+  - libapache2-mod-php
+  - php-mysql
+  - git
+
+tython_docroot: /var/www/starbar
+
+# Source is cloned from Corellia's Gitea (single canonical source). Must match
+# Corellia's admin user + repo name. Public repo => anonymous clone.
+tython_repo_url: "http://corellia.bars.local:3000/wuher/payments.git"
+tython_repo_branch: main
+
+# INTENTIONAL: leave the cloned .git/ in the web root so it is downloadable
+# from the web host too (a second path to the committed DB creds). Set true to
+# expose; false would require stripping .git after clone.
+tython_expose_dotgit: true

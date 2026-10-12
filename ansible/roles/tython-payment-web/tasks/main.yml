@@ -1,21 +1,98 @@
 ---
 ###############################################################################
 # ROLE: tython-payment-web
-# HOST: Tython — Debian 12 (packet .201)
-# OS:   Debian 12
+# HOST: Tython — Debian 12 (packet .201) — Payment System App
 #
-# STANDS UP:  Payment System web app. Reads/writes the shared DB on Ashla.
+# STANDS UP:  Apache + PHP serving the StarBar Payments app, deployed by
+#             cloning the source from Corellia's Gitea (single canonical src).
 #
-# INTENTIONAL MISCONFIG (static vulnerable config only — no attack scripting):
-#   - DB queries are string-concatenated (SQL injection) against Ashla. This is
-#     attack-path #1 into the shared DB, which holds customer CC + PII.
-#   - The app's source is hosted in Corellia's Gitea with committed DB creds,
-#     so a low-priv web foothold bridges to direct DB access.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - pay.php concatenates user input into SQL (SQL injection) against Ashla —
+#     attack-path #1 into the shared DB. The app connects with the leaked
+#     ccdc_db credential carried in the repo's committed config.php.
+#   - The cloned .git/ is left served by Apache (a second path to the creds on
+#     the web host itself).
 #
-# DEPENDS ON: Ashla (DB), Corellia (hosts source + leaked creds).
-# Pin app + all versions in defaults/main.yml.
+# Name resolution for ashla/corellia is done locally via /etc/hosts computed
+# from this host's own /24, so the chain does not depend on the DC's DNS.
 ###############################################################################
 
-- name: "tython-payment-web | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement tython-payment-web (payment app w/ SQLi)"
+- name: Assert shared vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_db is defined
+      - ccdc_dns_hosts is defined
+      - ccdc_domain is defined
+    fail_msg: "ccdc_db / ccdc_dns_hosts / ccdc_domain missing — set them in global_role_vars."
+
+- name: Add /etc/hosts entries for the service hosts (same /24 as this host)
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} CCDC RANGE HOSTS"
+    block: |
+      {% set prefix = ansible_default_ipv4.address.split('.')[0:3] | join('.') %}
+      {% for h in ccdc_dns_hosts %}
+      {{ prefix }}.{{ h.octet }} {{ h.name }}.{{ ccdc_domain.fqdn }} {{ h.name }}
+      {% endfor %}
+
+- name: Install Apache + PHP + git
+  become: true
+  ansible.builtin.apt:
+    name: "{{ tython_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure Apache is running and enabled
+  become: true
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+
+- name: Create web root
+  become: true
+  ansible.builtin.file:
+    path: "{{ tython_docroot }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Deploy the app FROM Gitea. Retries tolerate Corellia still coming up.
+- name: Deploy StarBar Payments from Gitea (clone/pull)
+  become: true
+  ansible.builtin.git:
+    repo: "{{ tython_repo_url }}"
+    dest: "{{ tython_docroot }}"
+    version: "{{ tython_repo_branch }}"
+    update: true
+    force: true
+  register: tython_clone
+  retries: 20
+  delay: 10
+  until: tython_clone is succeeded
+
+- name: Install the StarBar vhost
+  become: true
+  ansible.builtin.template:
+    src: starbar.conf.j2
+    dest: /etc/apache2/sites-available/starbar.conf
+    mode: "0644"
+  notify: reload apache
+
+- name: Enable the StarBar site
+  become: true
+  ansible.builtin.file:
+    src: /etc/apache2/sites-available/starbar.conf
+    dest: /etc/apache2/sites-enabled/starbar.conf
+    state: link
+  notify: reload apache
+
+- name: Disable the default Apache site
+  become: true
+  ansible.builtin.file:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    state: absent
+  notify: reload apache
