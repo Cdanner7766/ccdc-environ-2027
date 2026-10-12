@@ -70,3 +70,20 @@ INSERT IGNORE INTO payments (id, customer_id, card_id, amount_cents, ts, memo) V
  (4, 4, 4, 2650, '2026-01-12 23:18:00', 'Bar tab'),
  (5, 5, 5, 5100, '2026-01-13 19:55:00', 'VIP booth + drinks'),
  (6, 6, 6, 1200, '2026-01-13 21:30:00', 'Encore fee');
+
+-- --- Menu (read by Wookie's corporate/menu site = DB read path #2) ----------
+CREATE TABLE IF NOT EXISTS menu (
+  id           INT PRIMARY KEY,
+  name         VARCHAR(80)  NOT NULL,
+  description  VARCHAR(255) NOT NULL,
+  price_cents  INT          NOT NULL,
+  category     VARCHAR(40)  NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO menu (id, name, description, price_cents, category) VALUES
+ (1, 'Blue Milk',        'House specialty. Color guaranteed, flavor negotiable.', 600,  'Drinks'),
+ (2, 'Greasy Pongs',     'Pub-style basket. Extra greasy on request.',            850,  'Food'),
+ (3, 'Watered Cocktail', 'A wretched hive of value.',                             500,  'Drinks'),
+ (4, 'Cantina Combo',    'Pongs plus a drink of questionable origin.',            1200, 'Food'),
+ (5, 'Karaoke Hour',     'One hour of the private karaoke room.',                 3000, 'Service'),
+ (6, 'Hydration + Rum',  'Hydration is important. So is rum.',                    700,  'Drinks');

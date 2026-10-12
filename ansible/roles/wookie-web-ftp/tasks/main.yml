@@ -1,21 +1,133 @@
 ---
 ###############################################################################
 # ROLE: wookie-web-ftp
-# HOST: Wookie — Debian 12 (packet .20)
-# OS:   Debian 12  (packet OS is Alpine; using native Debian — no custom image)
+# HOST: Wookie — Debian 12 (packet .20) — Corporate Site, Menu, and FTP
 #
-# STANDS UP:  Corporate website + menu application (reads Ashla) + an FTP
-#             service.
+# STANDS UP:  Apache + PHP corporate/menu site (reads the shared menu table on
+#             Ashla) and a vsftpd FTP service.
 #
-# INTENTIONAL MISCONFIG (static config only):
-#   - Menu/site reads from Ashla = second foothold path into the shared DB.
-#   - FTP service with a weak/anonymous or reused-credential config
-#     (static vulnerable config).
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - A weak-password local FTP account with WRITE access to the web root.
+#     A foothold there can read config.php (the DB creds) and/or drop files
+#     into the served site. This is DB read/compromise path #2.
+#   - config.php carries the same canonical ccdc_db credential.
+#   menu.php itself takes no user input (no second SQLi — chain over breadth).
 #
-# DEPENDS ON: Ashla (DB).
-# Pin all versions in defaults/main.yml.
+# Name resolution for ashla is local via /etc/hosts (no dependency on DC DNS).
 ###############################################################################
 
-- name: "wookie-web-ftp | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement wookie-web-ftp (corporate site + menu + FTP)"
+- name: Assert shared vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_db is defined
+      - ccdc_dns_hosts is defined
+      - ccdc_domain is defined
+    fail_msg: "ccdc_db / ccdc_dns_hosts / ccdc_domain missing — set them in global_role_vars."
+
+- name: Add /etc/hosts entries for the service hosts (same /24 as this host)
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} CCDC RANGE HOSTS"
+    block: |
+      {% set prefix = ansible_default_ipv4.address.split('.')[0:3] | join('.') %}
+      {% for h in ccdc_dns_hosts %}
+      {{ prefix }}.{{ h.octet }} {{ h.name }}.{{ ccdc_domain.fqdn }} {{ h.name }}
+      {% endfor %}
+
+- name: Install Apache + PHP + vsftpd
+  become: true
+  ansible.builtin.apt:
+    name: "{{ wookie_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create web root
+  become: true
+  ansible.builtin.file:
+    path: "{{ wookie_docroot }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy corporate/menu site
+  become: true
+  ansible.builtin.copy:
+    src: site/
+    dest: "{{ wookie_docroot }}/"
+    mode: "0644"
+    directory_mode: "0755"
+
+- name: Render site config.php with the DB creds
+  become: true
+  ansible.builtin.template:
+    src: config.php.j2
+    dest: "{{ wookie_docroot }}/config.php"
+    mode: "0644"
+  no_log: true
+
+- name: Install the site vhost
+  become: true
+  ansible.builtin.template:
+    src: site.conf.j2
+    dest: /etc/apache2/sites-available/starbar-site.conf
+    mode: "0644"
+  notify: reload apache
+
+- name: Enable the site
+  become: true
+  ansible.builtin.file:
+    src: /etc/apache2/sites-available/starbar-site.conf
+    dest: /etc/apache2/sites-enabled/starbar-site.conf
+    state: link
+  notify: reload apache
+
+- name: Disable the default Apache site
+  become: true
+  ansible.builtin.file:
+    path: /etc/apache2/sites-enabled/000-default.conf
+    state: absent
+  notify: reload apache
+
+- name: Ensure Apache is running and enabled
+  become: true
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true
+
+# --- Weak FTP account with write access to the web root --------------------
+- name: Create the FTP user (home = web root; weak password on purpose)
+  become: true
+  ansible.builtin.user:
+    name: "{{ wookie_ftp_user }}"
+    home: "{{ wookie_docroot }}"
+    shell: /bin/bash
+    create_home: false
+    password: "{{ wookie_ftp_password | password_hash('sha512') }}"
+  no_log: true
+
+- name: Give the FTP user ownership of the web root (so uploads work)
+  become: true
+  ansible.builtin.file:
+    path: "{{ wookie_docroot }}"
+    owner: "{{ wookie_ftp_user }}"
+    group: "{{ wookie_ftp_user }}"
+    recurse: true
+
+- name: Install vsftpd config
+  become: true
+  ansible.builtin.template:
+    src: vsftpd.conf.j2
+    dest: /etc/vsftpd.conf
+    mode: "0644"
+  notify: restart vsftpd
+
+- name: Ensure vsftpd is running and enabled
+  become: true
+  ansible.builtin.service:
+    name: vsftpd
+    state: started
+    enabled: true

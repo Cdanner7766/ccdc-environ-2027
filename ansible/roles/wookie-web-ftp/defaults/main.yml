@@ -1,9 +1,18 @@
 ---
-# Wookie — Alpine (custom), web/menu/FTP reading Ashla DB
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   wookie_web_ftp_app_version: "x.y.z"
-#   wookie_web_ftp_listen_port: 0
+# wookie-web-ftp — role-specific knobs (non-shared).
+# Shared DB creds (ccdc_db.*) + host list (ccdc_dns_hosts) come from
+# global_role_vars.
+
+wookie_packages:
+  - apache2
+  - php
+  - libapache2-mod-php
+  - php-mysql
+  - vsftpd
+
+wookie_docroot: /var/www/starbar-web
+
+# INTENTIONAL weak FTP account (write access to the web root).
+wookie_ftp_user: ftpuser
+wookie_ftp_password: "cantina"
+wookie_ftp_anonymous: false

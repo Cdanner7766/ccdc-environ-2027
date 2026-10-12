@@ -1,2 +1,12 @@
 ---
-# Wookie — Alpine (custom), web/menu/FTP reading Ashla DB — handlers (service restarts, etc.). TODO.
+- name: reload apache
+  become: true
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+
+- name: restart vsftpd
+  become: true
+  ansible.builtin.service:
+    name: vsftpd
+    state: restarted

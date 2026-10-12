@@ -1,0 +1,13 @@
+# Managed by ccdc-wookie-web-ftp.
+<VirtualHost *:80>
+    ServerName {{ ansible_hostname }}
+    DocumentRoot {{ wookie_docroot }}
+    DirectoryIndex index.php index.html
+    <Directory {{ wookie_docroot }}>
+        Options -Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+    ErrorLog ${APACHE_LOG_DIR}/starbar_site_error.log
+    CustomLog ${APACHE_LOG_DIR}/starbar_site_access.log combined
+</VirtualHost>

@@ -1,0 +1,12 @@
+<?php
+// StarBar corporate/menu site — database configuration.
+// Holds the application DB account (same canonical ccdc_db credential). A
+// foothold on this host (e.g. via the weak FTP service) can read this file and
+// reach the shared database directly — DB read/compromise path #2.
+return [
+    'host' => '{{ ccdc_db.host }}',
+    'port' => {{ ccdc_db.port }},
+    'name' => '{{ ccdc_db.name }}',
+    'user' => '{{ ccdc_db.app_user }}',
+    'pass' => '{{ ccdc_db.app_password }}',
+];
