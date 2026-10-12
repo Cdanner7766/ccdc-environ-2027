@@ -20,8 +20,8 @@ host facts is the WRCCDC Inv6 / STAR BARS team packet.
 | Tython    | Debian              | .201      | Payment system app |
 | Ashla     | Debian              | .202      | Data exchange + DB server |
 | Bogan     | Debian              | .203      | Mail server |
-| Sing3PO   | Fedora              | .134      | THE karaoke machine |
-| Wookie    | Alpine              | .20       | Corporate site + menu + FTP |
+| Sing3PO   | Rocky 9 (pkt Fedora)| .134      | THE karaoke machine |
+| Wookie    | Debian 12 (pkt Alpine)| .20     | Corporate site + menu + FTP |
 | Corellia  | Rocky               | .253      | Gitea |
 
 ## Per-host intent (what each role wires)
@@ -56,11 +56,11 @@ host facts is the WRCCDC Inv6 / STAR BARS team packet.
 ### Bogan (mail, .203) — mail⇄AD overlap
 - Mailbox accounts == Deathstar AD usernames, reused/weak passwords.
 
-### Sing3PO (karaoke machine, .134)
+### Sing3PO (karaoke machine, .134) — Rocky 9 (packet: Fedora)
 - Karaoke app server. May consume Ashla data-exchange (decide at buildout;
   keep scope tight — one chained weakness, not many).
 
-### Wookie (site/menu/FTP, .20) — read path #2
+### Wookie (site/menu/FTP, .20) — read path #2 — Debian 12 (packet: Alpine)
 - Corporate site + menu reading **Ashla** (second DB foothold) + FTP service.
 
 ### Corellia (Gitea, .253) — creds-leak bridge

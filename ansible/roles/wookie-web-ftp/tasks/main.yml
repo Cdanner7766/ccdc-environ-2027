@@ -1,8 +1,8 @@
 ---
 ###############################################################################
 # ROLE: wookie-web-ftp
-# HOST: Wookie — Alpine 3.19 (CUSTOM Packer template) (packet .20)
-# OS:   Alpine 3.19
+# HOST: Wookie — Debian 12 (packet .20)
+# OS:   Debian 12  (packet OS is Alpine; using native Debian — no custom image)
 #
 # STANDS UP:  Corporate website + menu application (reads Ashla) + an FTP
 #             service.
@@ -12,7 +12,7 @@
 #   - FTP service with a weak/anonymous or reused-credential config
 #     (static vulnerable config).
 #
-# DEPENDS ON: Ashla (DB); custom Alpine template built first.
+# DEPENDS ON: Ashla (DB).
 # Pin all versions in defaults/main.yml.
 ###############################################################################
 

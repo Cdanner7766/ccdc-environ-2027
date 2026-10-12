@@ -36,11 +36,17 @@ CCDC network, rather than re-architecting it into VLANs.
 | 3 | Tython    | Debian 12                | .201       | Payment system app (SQLi)                 | native          |
 | 4 | Ashla     | Debian 12                | .202       | Data exchange + DB server (CC/PII)        | native          |
 | 5 | Bogan     | Debian 12                | .203       | Mail server (accounts tied to AD)         | native          |
-| 9 | Sing3PO   | Fedora 40                | .134       | THE karaoke machine                       | **custom Packer** |
-| 7 | Wookie    | Alpine 3.19              | .20        | Corporate site + menu + FTP (reads Ashla) | **custom Packer** |
+| 9 | Sing3PO   | Rocky Linux 9            | .134       | THE karaoke machine                       | native          |
+| 7 | Wookie    | Debian 12                | .20        | Corporate site + menu + FTP (reads Ashla) | native          |
 | 6 | Corellia  | Rocky Linux 9            | .253       | Gitea (leaked DB creds in source)         | native          |
 
 Plus the **Ludus native router** (replacing the packet's pfSense "Routooine").
+
+All templates are **native Ludus images** — no Packer builds. Two hosts use a
+native OS in place of the packet's (which Ludus has no official image for):
+Wookie is Debian 12 (packet: Alpine), Sing3PO is Rocky Linux 9 (packet:
+Fedora). This trades a little OS fidelity for a far simpler, more reliable
+deploy.
 
 ## Dependency & attack-chain map (what must be preserved)
 
@@ -86,10 +92,9 @@ AD forest must exist before anything joins or authenticates against it.
 
 0. **Prereqs (once):**
    - Install pinned collections: `ansible-galaxy collection install -r ansible/requirements.yml`
-   - Add custom role code to Ludus: `for r in ansible/roles/*; do ludus ansible roles add -d "$r"; done`
-   - Build custom templates:
-     `ludus templates add -d ./packer/wookie-alpine && ludus templates add -d ./packer/sing3po-fedora && ludus templates build`
-     (wait for both to reach a built state before deploying)
+   - Add role code to Ludus: `for r in ansible/roles/*; do ludus ansible roles add -d "$r"; done`
+   - All templates are native Ludus images; ensure they're present
+     (`ludus templates list`) — no Packer builds required.
 1. **Deathstar** — forest root DC + DNS. Everything else depends on it.
 2. **Tat10ine, Kamino, Bogan** — domain members / AD-tied accounts (need #1).
 3. **Ashla** — shared DB (no standup deps; needed by #5, #7, and Corellia creds).
@@ -127,18 +132,14 @@ these still apply to Ludus:
   containment between boxes. If you want to practice segmentation, add it
   host-based inside the roles and verify it, rather than trusting the range to
   isolate anything for you.
-- **Custom templates:** Wookie/Alpine and Sing3PO/Fedora are the two most likely
-  to surface issues (no official image = no Ludus-tested guest-agent path).
-  Confirm the QEMU guest agent and Python3 are in the built template, or
-  Ansible/Ludus post-deploy steps will hang.
+- **All-native templates:** every host uses an official Ludus image, so the
+  guest-agent/IP-detection handoff is on Ludus's tested path. No Packer builds
+  to maintain, no ISO checksums to chase.
 
 ## Layout
 
 ```
 ludus-range-config.yml         Range: 9 VMs on a flat /24, Ludus native router
-packer/
-  wookie-alpine/               Custom Alpine 3.19 template (Wookie)
-  sing3po-fedora/              Custom Fedora 40 template (Sing3PO)
 ansible/
   requirements.yml             Version-pinned collections
   ansible.cfg
@@ -150,6 +151,5 @@ docs/
 ## Status
 
 Scaffold. VM definitions and addressing (exact packet octets, flat /24) are
-complete; each Ansible role is a documented skeleton to be filled one at a
-time. The two Packer ISO checksums are placeholders — replace with published
-checksums before the first build.
+complete, all on native Ludus templates; each Ansible role is a documented
+skeleton to be filled one at a time.

@@ -21,8 +21,8 @@
 # that drive intentional-misconfig wiring are stubbed (TODO), filled one role
 # at a time.
 #
-# Prereqs: add custom roles  (ludus ansible roles add -d ./ansible/roles/<r>)
-#          build custom templates (Wookie/Alpine, Sing3PO/Fedora) first.
+# Prereqs: add custom roles  (ludus ansible roles add -d ./ansible/roles/<r>).
+#          All templates are native Ludus images (no Packer builds).
 ###############################################################################
 
 global_role_vars: {}   # TODO: shared vars (e.g. common repo pin).
@@ -134,11 +134,12 @@ ludus:
       - ccdc-bogan-mail     # mailbox users mirror Deathstar AD users; reused/weak passwords
     role_vars: {}           # TODO
 
-  # --- 9. Sing3PO : Fedora (CUSTOM Packer build) — THE Karaoke Machine ---
+  # --- 9. Sing3PO : Rocky Linux 9 — THE Karaoke Machine -----------------
   # Packet: .134  |  Role: THE Karaoke Machine
+  # Packet OS is Fedora; using native Rocky 9 (RPM-family, no custom image).
   - vm_name: "{{ range_id }}-sing3po"
     hostname: "sing3po"
-    template: fedora-40-x64-server-template   # built by packer/sing3po-fedora
+    template: rocky-9-x64-server-template
     vlan: 10
     ip_last_octet: 134
     ram_gb: 2
@@ -148,15 +149,16 @@ ludus:
       - ccdc-sing3po-app    # karaoke app server; may consume Ashla data-exchange (decide at buildout)
     role_vars: {}           # TODO
 
-  # --- 7. Wookie : Alpine (CUSTOM Packer build) — Site + Menu + FTP ------
+  # --- 7. Wookie : Debian 12 — Site + Menu + FTP ------------------------
   # Packet: .20  |  Role: Corporate Site, Menu, and FTP applications
+  # Packet OS is Alpine; using native Debian 12 (no custom Packer image).
   - vm_name: "{{ range_id }}-wookie"
     hostname: "wookie"
-    template: alpine-319-x64-server-template   # built by packer/wookie-alpine
+    template: debian-12-x64-server-template
     vlan: 10
     ip_last_octet: 20
-    ram_gb: 1
-    cpus: 1
+    ram_gb: 2
+    cpus: 2
     linux: true
     roles:
       - ccdc-wookie-web-ftp  # corporate site + menu reading Ashla (2nd DB path) + FTP service

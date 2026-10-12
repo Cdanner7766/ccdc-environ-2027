@@ -1,18 +1,17 @@
 ---
 ###############################################################################
 # ROLE: sing3po-app
-# HOST: Sing3PO — Fedora 40 (CUSTOM Packer template) (packet .134)
-# OS:   Fedora 40
+# HOST: Sing3PO — Rocky Linux 9 (packet .134)
+# OS:   Rocky Linux 9  (packet OS is Fedora; using native Rocky — RPM-family)
 #
 # STANDS UP:  "THE Karaoke Machine" — the karaoke application server.
 #
 # INTENTIONAL MISCONFIG (static config only):
-#   - Karaoke app service. It MAY consume Ashla's data-exchange DB; if so, that
-#     is a 3rd logical DB consumer. Keep scope tight (realism over breadth):
-#     decide at buildout whether Sing3PO reads Ashla or stands alone, and wire
-#     at most one realistic, chained weakness.
+#   - Karaoke app service. Scope kept tight (realism over breadth): stand-alone
+#     by default, at most one realistic, chained weakness. Revisit whether it
+#     should read Ashla's data-exchange DB at buildout.
 #
-# DEPENDS ON: custom Fedora template built first; optionally Ashla.
+# DEPENDS ON: none (optionally Ashla).
 # Pin all versions in defaults/main.yml.
 ###############################################################################
 
