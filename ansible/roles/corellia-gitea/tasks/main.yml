@@ -1,21 +1,208 @@
 ---
 ###############################################################################
 # ROLE: corellia-gitea
-# HOST: Corellia — Rocky Linux, Gitea w/ leaked DB creds
-# OS:   Rocky Linux 9
+# HOST: Corellia — Rocky Linux 9 (packet .253) — Gitea
 #
-# STANDS UP:  TODO — the service/app this host provides.
+# STANDS UP:  A Gitea server hosting the StarBar Payments source repository.
 #
-# INTENTIONAL MISCONFIG (to wire in this role, static config only — no attack
-# scripting):
-#   Gitea hosting Tython's source repo with committed secrets (real Ashla DB creds) in history and/or an exposed .git/ dir. This bridges a low-priv web foothold to DB creds. Static repo content only.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - The repo's committed config.php contains the LIVE Ashla DB credential
+#     (ccdc_db), so a low-priv foothold that reaches Gitea can read the creds
+#     and connect straight to the database. The creds match because they are
+#     rendered from the same canonical global_role_vars.
+#   - Anonymous repo browsing is enabled and the Gitea admin password is weak,
+#     so the source is readable without much effort.
 #
-# DEPENDS ON: Ashla (creds must match), Tython (hosts its source)
-#
-# All package/app versions MUST be pinned (see defaults/main.yml) so re-runs
-# are idempotent and non-drifting.
+# This is the "creds-leak bridge" in the chain. The hosted source is the same
+# app the Tython role deploys.
 ###############################################################################
 
-- name: "corellia-gitea | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement corellia-gitea (Corellia — Rocky Linux, Gitea w/ leaked DB creds)"
+- name: Assert shared DB vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_db is defined
+      - ccdc_db.app_user is defined
+      - ccdc_db.app_password is defined
+    fail_msg: "ccdc_db.* missing — set it in global_role_vars (ludus-range-config.yml)."
+
+- name: Install git and dependencies
+  become: true
+  ansible.builtin.dnf:
+    name: [git, sqlite]
+    state: present
+
+- name: Create gitea system user
+  become: true
+  ansible.builtin.user:
+    name: "{{ corellia_gitea_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ corellia_gitea_work }}"
+    create_home: true
+
+- name: Create gitea directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ corellia_gitea_user }}"
+    group: "{{ corellia_gitea_user }}"
+    mode: "0750"
+  loop:
+    - "{{ corellia_gitea_etc }}"
+    - "{{ corellia_gitea_work }}"
+    - "{{ corellia_gitea_work }}/data"
+
+- name: Download pinned Gitea binary
+  become: true
+  ansible.builtin.get_url:
+    url: "https://dl.gitea.com/gitea/{{ corellia_gitea_version }}/gitea-{{ corellia_gitea_version }}-linux-amd64"
+    dest: "{{ corellia_gitea_bin }}"
+    mode: "0755"
+    checksum: "{{ ('sha256:' + corellia_gitea_sha256) if corellia_gitea_sha256 else omit }}"
+
+# --- Secrets: generate ONCE and persist (never clobber on redeploy) ---------
+# A hardcoded INTERNAL_TOKEN can break Gitea's internal push hooks, and
+# overwriting SECRET_KEY on redeploy would corrupt existing encrypted data.
+# So we write app.ini only when it does not yet exist, using freshly
+# generated secrets.
+- name: Check for existing Gitea config
+  become: true
+  ansible.builtin.stat:
+    path: "{{ corellia_gitea_etc }}/app.ini"
+  register: corellia_app_ini
+
+- name: Generate Gitea SECRET_KEY
+  become: true
+  ansible.builtin.command: "{{ corellia_gitea_bin }} generate secret SECRET_KEY"
+  register: corellia_secret_key_gen
+  changed_when: false
+  when: not corellia_app_ini.stat.exists
+
+- name: Generate Gitea INTERNAL_TOKEN
+  become: true
+  ansible.builtin.command: "{{ corellia_gitea_bin }} generate secret INTERNAL_TOKEN"
+  register: corellia_internal_token_gen
+  changed_when: false
+  when: not corellia_app_ini.stat.exists
+
+- name: Set generated secret facts
+  ansible.builtin.set_fact:
+    corellia_gitea_secret_key: "{{ corellia_secret_key_gen.stdout | trim }}"
+    corellia_gitea_internal_token: "{{ corellia_internal_token_gen.stdout | trim }}"
+  when: not corellia_app_ini.stat.exists
+  no_log: true
+
+- name: Install Gitea config (app.ini) — first install only
+  become: true
+  ansible.builtin.template:
+    src: app.ini.j2
+    dest: "{{ corellia_gitea_etc }}/app.ini"
+    owner: "{{ corellia_gitea_user }}"
+    group: "{{ corellia_gitea_user }}"
+    mode: "0640"
+  when: not corellia_app_ini.stat.exists
+  notify: restart gitea
+
+- name: Install Gitea systemd unit
+  become: true
+  ansible.builtin.template:
+    src: gitea.service.j2
+    dest: /etc/systemd/system/gitea.service
+    mode: "0644"
+  notify: restart gitea
+
+- name: Ensure Gitea is running and enabled
+  become: true
+  ansible.builtin.systemd:
+    name: gitea
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Apply any pending restart before using the API
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for Gitea HTTP to come up
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ corellia_gitea_http_port }}/api/v1/version"
+    status_code: 200
+  register: corellia_gitea_up
+  retries: 30
+  delay: 5
+  until: corellia_gitea_up is succeeded
+
+# --- Admin user (idempotent: create only if absent) -------------------------
+- name: List existing Gitea users
+  become: true
+  become_user: "{{ corellia_gitea_user }}"
+  ansible.builtin.command: "{{ corellia_gitea_bin }} admin user list --config {{ corellia_gitea_etc }}/app.ini"
+  environment:
+    GITEA_WORK_DIR: "{{ corellia_gitea_work }}"
+  register: corellia_user_list
+  changed_when: false
+
+- name: Create the Gitea admin user (weak password on purpose)
+  become: true
+  become_user: "{{ corellia_gitea_user }}"
+  ansible.builtin.command: >-
+    {{ corellia_gitea_bin }} admin user create
+    --username {{ corellia_gitea_admin_user }}
+    --password {{ corellia_gitea_admin_password }}
+    --email {{ corellia_gitea_admin_email }}
+    --admin --must-change-password=false
+    --config {{ corellia_gitea_etc }}/app.ini
+  environment:
+    GITEA_WORK_DIR: "{{ corellia_gitea_work }}"
+  when: corellia_gitea_admin_user not in corellia_user_list.stdout
+  no_log: true
+
+# --- Create the repo via the API (201 created or 409 already exists) --------
+- name: Create the hosted repository
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ corellia_gitea_http_port }}/api/v1/user/repos"
+    method: POST
+    url_username: "{{ corellia_gitea_admin_user }}"
+    url_password: "{{ corellia_gitea_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ corellia_repo_name }}"
+      description: "{{ corellia_repo_desc }}"
+      private: false
+      auto_init: false
+    status_code: [201, 409]
+  no_log: true
+
+# --- Seed the repo with the app source + committed creds (once) -------------
+- name: Stage the payment-app source
+  become: true
+  ansible.builtin.copy:
+    src: payments-app/
+    dest: "{{ corellia_src_stage }}/"
+    mode: "0644"
+    directory_mode: "0755"
+
+- name: Render committed config.php with the live DB creds (the leak)
+  become: true
+  ansible.builtin.template:
+    src: config.php.j2
+    dest: "{{ corellia_src_stage }}/config.php"
+    mode: "0644"
+  no_log: true
+
+- name: Seed the repo (git init + commit + push) — once, guarded by a marker
+  become: true
+  ansible.builtin.shell:
+    chdir: "{{ corellia_src_stage }}"
+    cmd: |
+      set -e
+      git init -q -b main
+      git config user.email "{{ corellia_gitea_admin_email }}"
+      git config user.name  "{{ corellia_gitea_admin_user }}"
+      git add -A
+      git diff --cached --quiet || git commit -q -m "Initial import of StarBar Payments service"
+      git push -q -f "http://{{ corellia_gitea_admin_user }}:{{ corellia_gitea_admin_password }}@127.0.0.1:{{ corellia_gitea_http_port }}/{{ corellia_gitea_admin_user }}/{{ corellia_repo_name }}.git" main
+      touch "{{ corellia_seed_marker }}"
+    creates: "{{ corellia_seed_marker }}"
+  no_log: true

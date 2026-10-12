@@ -1,0 +1,15 @@
+[Unit]
+Description=Gitea (StarBar range)
+After=network.target
+
+[Service]
+Type=simple
+User={{ corellia_gitea_user }}
+Group={{ corellia_gitea_user }}
+WorkingDirectory={{ corellia_gitea_work }}
+ExecStart={{ corellia_gitea_bin }} web --config {{ corellia_gitea_etc }}/app.ini
+Restart=always
+Environment=USER={{ corellia_gitea_user }} HOME={{ corellia_gitea_work }} GITEA_WORK_DIR={{ corellia_gitea_work }}
+
+[Install]
+WantedBy=multi-user.target

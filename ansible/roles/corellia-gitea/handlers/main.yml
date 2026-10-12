@@ -1,2 +1,7 @@
 ---
-# Corellia — Rocky Linux, Gitea w/ leaked DB creds — handlers (service restarts, etc.). TODO.
+- name: restart gitea
+  become: true
+  ansible.builtin.systemd:
+    name: gitea
+    state: restarted
+    daemon_reload: true

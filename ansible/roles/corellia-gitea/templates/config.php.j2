@@ -1,0 +1,11 @@
+<?php
+// StarBar Payments — database configuration.
+// Committed to source control (this is the intentional credential leak: the
+// live application DB account is present in the repository on Corellia/Gitea).
+return [
+    'host' => '{{ ccdc_db.host }}',
+    'port' => {{ ccdc_db.port }},
+    'name' => '{{ ccdc_db.name }}',
+    'user' => '{{ ccdc_db.app_user }}',
+    'pass' => '{{ ccdc_db.app_password }}',
+];

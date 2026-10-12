@@ -1,0 +1,38 @@
+; Managed by ccdc-corellia-gitea. Lab Gitea for the StarBar range.
+APP_NAME = {{ corellia_gitea_app_name }}
+RUN_USER = {{ corellia_gitea_user }}
+RUN_MODE = prod
+WORK_PATH = {{ corellia_gitea_work }}
+
+[server]
+PROTOCOL  = http
+HTTP_ADDR = 0.0.0.0
+HTTP_PORT = {{ corellia_gitea_http_port }}
+DOMAIN    = {{ corellia_gitea_domain }}
+ROOT_URL  = http://{{ corellia_gitea_domain }}:{{ corellia_gitea_http_port }}/
+DISABLE_SSH = true
+LFS_START_SERVER = false
+APP_DATA_PATH = {{ corellia_gitea_work }}/data
+
+[database]
+DB_TYPE = sqlite3
+PATH    = {{ corellia_gitea_work }}/data/gitea.db
+
+[security]
+INSTALL_LOCK   = true
+SECRET_KEY     = {{ corellia_gitea_secret_key }}
+INTERNAL_TOKEN = {{ corellia_gitea_internal_token }}
+
+[service]
+DISABLE_REGISTRATION = true
+; Anonymous repo browsing stays enabled: the committed DB creds are meant to be
+; readable by a low-priv foothold (the intentional leak).
+REQUIRE_SIGNIN_VIEW  = false
+
+[repository]
+DEFAULT_PRIVATE = public
+ROOT = {{ corellia_gitea_work }}/data/gitea-repositories
+
+[log]
+MODE  = console
+LEVEL = warn

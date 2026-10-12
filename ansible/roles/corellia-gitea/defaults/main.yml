@@ -1,9 +1,30 @@
 ---
-# Corellia — Rocky Linux, Gitea w/ leaked DB creds
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   corellia_gitea_app_version: "x.y.z"
-#   corellia_gitea_listen_port: 0
+# corellia-gitea — role-specific knobs (non-shared).
+# Shared DB creds (ccdc_db.*) come from global_role_vars and are what this
+# role COMMITS into the hosted repo (the intentional leak).
+
+# --- Gitea (app-layer version is pinned hard; verify the checksum) ----------
+corellia_gitea_version: "1.22.3"
+corellia_gitea_bin: /usr/local/bin/gitea
+# Fill with the published checksum for reproducible, verified installs. Empty
+# => download without checksum verification (works, but not pinned). See
+# https://dl.gitea.com/gitea/{{ corellia_gitea_version }}/ for the .sha256.
+corellia_gitea_sha256: ""
+
+corellia_gitea_user: git
+corellia_gitea_etc: /etc/gitea
+corellia_gitea_work: /var/lib/gitea
+corellia_gitea_app_name: "StarBar Git"
+corellia_gitea_domain: corellia.bars.local
+corellia_gitea_http_port: 3000
+
+# --- Gitea admin + hosted repo ----------------------------------------------
+# Weak admin password on purpose (also a discoverable foothold into Gitea).
+corellia_gitea_admin_user: wuher
+corellia_gitea_admin_password: "bluemilk"
+corellia_gitea_admin_email: "wuher@bars.local"
+corellia_repo_name: payments
+corellia_repo_desc: "StarBar Payments service source"
+
+corellia_src_stage: /opt/ccdc/payments-src
+corellia_seed_marker: "{{ corellia_gitea_work }}/.ccdc_seeded"
