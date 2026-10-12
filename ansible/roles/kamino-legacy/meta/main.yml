@@ -3,11 +3,11 @@ galaxy_info:
   role_name: kamino_legacy
   namespace: ccdc
   author: CCDC range
-  description: "Kamino — Windows Server 2016, legacy app/service host"
+  description: "Kamino — Windows Server 2016 karaoke droid (canned AI support) + legacy config"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Windows
+      versions: [2016]
 dependencies: []
-# Depends-on (informational): Deathstar (domain member)
+# Depends-on (informational): Deathstar (AD/DNS; native domain join).

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>STAR BARS — Droid Support</title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 40px auto; }
+    #log p { margin: 6px 0; }
+    .bot { color: #225; }
+    .you { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>C-support Droid</h1>
+  <p>Your not-so-intelligent assistant for STAR BARS customer service.</p>
+  <div id="log"></div>
+  <input id="q" placeholder="Ask the droid..." size="40" autofocus>
+  <button onclick="ask()">Send</button>
+  <script>
+    // Canned-response stub. No model, no backend — static training prop only.
+    var answers = {
+      "hours":   "We open at happy hour and close when the karaoke stops.",
+      "menu":    "Blue Milk, Greasy Pongs, and watered cocktails. See the menu site.",
+      "karaoke": "One song per customer. Auto-tune strictly prohibited.",
+      "wifi":    "Ask a bartender. The password is definitely not on a sticky note.",
+      "refund":  "Refunds are processed by the payment system. Please file a ticket."
+    };
+    function ask() {
+      var q = document.getElementById('q').value.toLowerCase();
+      var log = document.getElementById('log');
+      log.innerHTML += "<p class='you'>You: " + q + "</p>";
+      var a = "Beep boop. Try asking about: hours, menu, karaoke, wifi, refund.";
+      for (var k in answers) { if (q.indexOf(k) >= 0) { a = answers[k]; break; } }
+      log.innerHTML += "<p class='bot'>Droid: " + a + "</p>";
+      document.getElementById('q').value = "";
+    }
+  </script>
+</body>
+</html>

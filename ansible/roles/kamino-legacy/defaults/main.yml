@@ -1,9 +1,13 @@
 ---
-# Kamino — Windows Server 2016, legacy app/service host
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   kamino_legacy_app_version: "x.y.z"
-#   kamino_legacy_listen_port: 0
+# kamino-legacy — role-specific knobs (non-shared).
+# Domain join is native (Ludus role: member).
+
+# Weak service account that runs the droid web app (intentional misconfig).
+kamino_svc_user: svc_droid
+kamino_svc_password: "Droid123"
+
+kamino_site_root: 'C:\inetpub\wwwroot'
+
+# Leave legacy SMBv1 enabled (classic Server 2016 legacy weakness). Static
+# config; set false to harden.
+kamino_enable_smbv1: true

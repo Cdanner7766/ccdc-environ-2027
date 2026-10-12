@@ -2,21 +2,54 @@
 ###############################################################################
 # ROLE: kamino-legacy
 # HOST: Kamino — Windows Server 2016 (packet .11)
-# OS:   Windows Server 2016
+#       Karaoke Droid with Local AI for Customer Support
 #
-# STANDS UP:  "Karaoke Droid" host with a local AI customer-support app, on a
-#             legacy Server 2016 box. Domain member.
+# STANDS UP:  IIS serving the "C-support Droid" — a CANNED-RESPONSE support
+#             page (static HTML + client-side script; no model, no backend).
 #
-# INTENTIONAL MISCONFIG (static config only):
-#   - Legacy/unpatched service configuration appropriate to a 2016 box left
-#     behind by the former IT team.
-#   - Weak service-account for the droid/support app (reused or guessable),
-#     consistent with the AD credential-reuse theme.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - The droid web app's IIS app pool runs as a weak-password local service
+#     account (svc_droid) — a realistic weak-service-account exposure.
+#   - Legacy SMBv1 is left enabled (classic Server 2016 legacy weakness).
 #
-# DEPENDS ON: Deathstar (domain member).
-# Pin all versions in defaults/main.yml.
+# Domain member (native join to Deathstar).
 ###############################################################################
 
-- name: "kamino-legacy | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement kamino-legacy (karaoke droid + local AI support, legacy 2016)"
+- name: Install IIS (web server role)
+  ansible.windows.win_feature:
+    name: Web-Server
+    state: present
+    include_management_tools: true
+
+- name: Deploy the droid support page
+  ansible.windows.win_copy:
+    src: droid/
+    dest: "{{ kamino_site_root }}\\"
+
+- name: Create the weak droid service account
+  ansible.windows.win_user:
+    name: "{{ kamino_svc_user }}"
+    password: "{{ kamino_svc_password }}"
+    password_never_expires: true
+    groups:
+      - Users
+      - IIS_IUSRS
+    groups_action: add
+    state: present
+  no_log: true
+
+- name: Run the default app pool as the weak service account
+  community.windows.win_iis_webapppool:
+    name: DefaultAppPool
+    state: started
+    attributes:
+      processModel.identityType: SpecificUser
+      processModel.userName: "{{ kamino_svc_user }}"
+      processModel.password: "{{ kamino_svc_password }}"
+  no_log: true
+
+- name: Leave legacy SMBv1 enabled (classic 2016 legacy weakness)
+  ansible.windows.win_feature:
+    name: FS-SMB1
+    state: present
+  when: kamino_enable_smbv1 | bool
