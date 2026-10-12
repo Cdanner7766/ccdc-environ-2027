@@ -1,9 +1,20 @@
 ---
-# Ashla — Debian, DB backend (serves Tython + Wookie)
-# ---------------------------------------------------------------------------
-# TODO (fill when we build this role): version-pinned package/app versions and
-# any tunables. Pin everything with an explicit version so re-runs don't drift.
-#
-# Example shape:
-#   ashla_db_app_version: "x.y.z"
-#   ashla_db_listen_port: 0
+# ashla-db — role-specific knobs (non-shared).
+# Shared DB identity/secret (ccdc_db: host/port/name/app_user/app_password)
+# is the CANONICAL source of truth in global_role_vars. This role READS it.
+
+# OS packages (version floats to the Debian 12 base image per the project's
+# pinning decision; app-layer artifacts are what we pin hard elsewhere).
+ashla_packages:
+  - mariadb-server
+  - python3-pymysql        # required by community.mysql modules
+
+ashla_mysql_socket: /run/mysqld/mysqld.sock
+
+# INTENTIONAL EXPOSURE: bind on all interfaces so the front ends (Tython,
+# Wookie) on other hosts can reach the DB. On a flat CCDC network this is the
+# realistic (over-)exposure that makes the shared-DB chain reachable.
+ashla_bind_address: "0.0.0.0"
+
+# Where the schema+seed SQL is staged on the host before import.
+ashla_sql_path: /opt/ccdc/schema_seed.sql

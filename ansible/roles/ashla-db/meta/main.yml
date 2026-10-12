@@ -3,11 +3,13 @@ galaxy_info:
   role_name: ashla_db
   namespace: ccdc
   author: CCDC range
-  description: "Ashla — Debian, DB backend (serves Tython + Wookie)"
+  description: "Ashla — Debian 12, shared MariaDB (over-privileged app user + CC/PII seed)"
   license: MIT
   min_ansible_version: "2.15"
-  platforms: []
-# Build-order dependency (documentation only; Ludus deploys per-VM, so these
-# are enforced by the deploy order in README, not by role dependency chains).
+  platforms:
+    - name: Debian
+      versions: [bookworm]
 dependencies: []
-# Depends-on (informational): none for standup; consumed by Tython + Wookie
+# Depends-on (informational): nothing to stand up. Consumed by Tython + Wookie;
+# ccdc_db creds are mirrored (leaked) by corellia-gitea. Requires collection
+# community.mysql (pinned in ansible/requirements.yml) and python3-pymysql.

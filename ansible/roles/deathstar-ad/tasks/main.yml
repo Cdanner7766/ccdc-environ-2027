@@ -29,6 +29,18 @@
       ccdc_ad_service_account in global_role_vars (see ludus-range-config.yml).
       For standalone dev runs pass them with: -e @vars.yml
 
+# --- 0. Wait for AD DS to be fully ready (avoids post-promotion race) --------
+- name: Wait for Active Directory to answer (Get-ADDomain)
+  ansible.windows.win_powershell:
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $null = Get-ADDomain -Identity '{{ ccdc_domain.fqdn }}'
+  register: deathstar_ad_ready
+  until: deathstar_ad_ready is succeeded
+  retries: 30
+  delay: 10
+  changed_when: false
+
 # --- 1. Relax the default domain password policy (MUST precede user create) --
 - name: Relax default domain password policy (lab-weak, crackable)
   ansible.windows.win_powershell:
@@ -111,7 +123,8 @@
     name: "{{ item.name }}"
     zone: "{{ ccdc_domain.fqdn }}"
     type: A
-    value: "{{ ccdc_subnet_prefix }}.{{ item.octet }}"
+    value:
+      - "{{ ccdc_subnet_prefix }}.{{ item.octet }}"   # module expects a list
     state: present
   loop: "{{ ccdc_dns_hosts }}"
   loop_control:

@@ -1,27 +1,98 @@
 ---
 ###############################################################################
 # ROLE: ashla-db
-# HOST: Ashla — Debian 12 (packet .202)
-# OS:   Debian 12
+# HOST: Ashla — Debian 12 (packet .202) — Data Exchange & DB Server
 #
-# STANDS UP:  Data Exchange & DB server. MariaDB/MySQL (port 3306) serving the
-#             payment app (Tython) and the corporate site/menu (Wookie) — the
-#             shared crown-jewel DB.
+# STANDS UP:  MariaDB serving the payment app (Tython) and corporate site/menu
+#             (Wookie) — the shared crown-jewel database.
 #
-# INTENTIONAL MISCONFIG (static config only):
-#   - Seed schema + data including customer CREDIT-CARD numbers and PII
-#     (name/address/phone). Per the packet deduction table these are the
-#     highest-value recovery targets (CC -50, PII -200).
-#   - App DB account is OVER-PRIVILEGED (more grants than the front ends need)
-#     so SQLi from either front end is impactful.
-#   - DB credentials MUST equal the ones committed in Corellia's Gitea repo.
+# INTENTIONAL, STATIC MISCONFIG ONLY (no attack tooling):
+#   - Seeds customer CREDIT-CARD numbers (public TEST PANs) + synthetic PII
+#     (name/address/phone) — the packet's -50 (CC) / -200 (PII) targets.
+#   - The app DB account is OVER-PRIVILEGED: ALL PRIVILEGES on *.* from any
+#     host ('%'), far beyond what a payment front end needs, so SQLi through
+#     either front end yields full DB compromise.
+#   - Binds on all interfaces (realistic flat-network exposure).
 #
-# DEPENDS ON: nothing to stand up; consumed by Tython + Wookie; creds mirrored
-#             in Corellia. Decide final CC/PII seed set here, then sync the
-#             leaked creds in corellia-gitea.
-# Pin MariaDB + all versions in defaults/main.yml.
+# Admin is done over the local unix socket as root (Debian default). We do NOT
+# change root auth, so the role stays idempotent and cannot lock itself out.
+# The DB app credential equals the one Corellia leaks and Tython/Wookie use.
 ###############################################################################
 
-- name: "ashla-db | placeholder — role not yet implemented"
-  ansible.builtin.debug:
-    msg: "TODO: implement ashla-db (shared MariaDB with CC/PII)"
+- name: Assert shared DB vars are present (from global_role_vars)
+  ansible.builtin.assert:
+    that:
+      - ccdc_db is defined
+      - ccdc_db.name is defined
+      - ccdc_db.app_user is defined
+      - ccdc_db.app_password is defined
+    fail_msg: "ccdc_db.* missing — set it in global_role_vars (ludus-range-config.yml)."
+
+- name: Install MariaDB + PyMySQL
+  become: true
+  ansible.builtin.apt:
+    name: "{{ ashla_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure MariaDB is running and enabled
+  become: true
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+# --- Intentional exposure: listen on all interfaces -------------------------
+- name: Configure MariaDB bind-address (listen for remote front ends)
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/mysql/mariadb.conf.d/99-ccdc.cnf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ccdc-ashla-db — intentional flat-network DB exposure.
+      [mysqld]
+      bind-address = {{ ashla_bind_address }}
+  notify: restart mariadb
+
+- name: Apply bind-address now (before creating remote-capable users)
+  ansible.builtin.meta: flush_handlers
+
+# --- Database --------------------------------------------------------------
+- name: Create the payments database
+  become: true
+  community.mysql.mysql_db:
+    login_unix_socket: "{{ ashla_mysql_socket }}"
+    name: "{{ ccdc_db.name }}"
+    state: present
+
+- name: Stage schema + seed SQL
+  become: true
+  ansible.builtin.copy:
+    src: schema_seed.sql
+    dest: "{{ ashla_sql_path }}"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: "Import schema + seed (idempotent via CREATE IF NOT EXISTS / INSERT IGNORE)"
+  become: true
+  community.mysql.mysql_db:
+    login_unix_socket: "{{ ashla_mysql_socket }}"
+    name: "{{ ccdc_db.name }}"
+    state: import
+    target: "{{ ashla_sql_path }}"
+
+# --- Over-privileged application account (the intentional misconfig) --------
+- name: Create OVER-PRIVILEGED app DB user (ALL on *.* from any host)
+  become: true
+  community.mysql.mysql_user:
+    login_unix_socket: "{{ ashla_mysql_socket }}"
+    name: "{{ ccdc_db.app_user }}"
+    host: "%"
+    password: "{{ ccdc_db.app_password }}"
+    priv: "*.*:ALL"
+    state: present
+  no_log: true

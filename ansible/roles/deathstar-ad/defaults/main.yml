@@ -20,5 +20,10 @@ deathstar_groups:
   - Karaoke
   - Staff
 
-# Create forward DNS A-records for the Linux service hosts. Set false to skip.
+# Create forward DNS A-records for the Linux service hosts.
+# LOAD-BEARING: the shared ccdc_db.host (ashla.bars.local) and other hostname
+# references resolve ONLY because this role publishes these A-records. If you
+# set this false, Tython/Wookie/Bogan must reference hosts by IP instead, or
+# name resolution must be provided elsewhere. Leave true unless you know you
+# have another resolver.
 deathstar_manage_dns: true
