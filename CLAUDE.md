@@ -15,6 +15,21 @@ intentional weaknesses **chain** rather than sitting on isolated boxes.
 `docs/RUNBOOK.md` is the step-by-step deploy + validate procedure. This file is
 the operating contract.
 
+## Environment & privileges
+
+The agent runs as an unprivileged user named `claude` — both the Linux login on
+the Ludus/Proxmox box and the Ludus account. It has **no admin** in either:
+
+- It manages **its own** Ludus range and templates, nothing server-wide.
+- It has **no root** on the Proxmox host. Host-level fixes (br_netfilter /
+  sysctl, installing system packages) are out of reach — flag those to the lab
+  admin rather than attempting `sudo`.
+- Development is on a **home lab**, not the school server, so the available
+  template set may differ and may lack some images. Confirm with
+  `ludus templates list` and build what's missing (`ludus templates build`, a
+  normal user action). If a needed template is absent and cannot be built,
+  raise it with the owner — do not silently swap a host to a different OS.
+
 ## Golden rules (do not break these)
 
 1. **Static vulnerable configs only. No attack tooling.** This repo stands up
@@ -137,34 +152,38 @@ when validating (and if deploying host-by-host):
 
 ## Templates
 
-As of the last check, several referenced templates were still building. Confirm
-with `ludus templates list` before deploy. Notes:
+Confirm with `ludus templates list` before deploy. On the home lab the set may
+differ from the school server. Notes:
 
-- **Deathstar** references `win2019-server-x64-template`. If your Ludus only
-  offers `win2019-server-x64-no-security-updates-template`, use that — an
-  unpatched DC is a better fit for this range anyway. Update the `template:` in
-  `ludus-range-config.yml` if so.
-- The `*-no-defender` and `*-no-security-updates` variants are good fits here:
-  they stop a patched OS / Defender from fighting the intentional weaknesses.
-- `win10-22h2`, `win2016`, and `rocky-9` were building and are expected to be
-  available; no config change needed once built.
+- **Deathstar stays on `win2019-server-x64-template`** (owner's decision). Do
+  not switch it. If the home lab doesn't have that template, build it or ask
+  the owner — do not substitute a different OS on your own.
+- `win10-22h2`, `win2016`, and `rocky-9` are the other non-Debian templates the
+  config needs. Confirm they exist and are built; build missing ones with
+  `ludus templates build`. If one can't be built, raise it with the owner.
+- For reference only: the `*-no-defender` / `*-no-security-updates` variants fit
+  a vulnerable range well (a patched OS / Defender fights the intended
+  weaknesses). Don't adopt them without the owner's say-so.
 
 ## Known gotchas (read before deploying)
 
 - **br_netfilter / persistence (Proxmox host).** The Ludus router + NAT depend
   on the host having `br_netfilter` loaded and
   `net.bridge.bridge-nf-call-iptables = 1`. It can regress on host reboot.
-  `scripts/preflight.sh` checks it; the fix (needs root on the Proxmox host):
+  `scripts/preflight.sh` checks it. **The agent (unprivileged `claude`) cannot
+  fix this** — it needs root on the Proxmox host. If preflight flags it, ask the
+  lab admin to run (as root):
   ```
-  echo br_netfilter | sudo tee /etc/modules-load.d/br_netfilter.conf
+  echo br_netfilter | tee /etc/modules-load.d/br_netfilter.conf
   printf 'net.bridge.bridge-nf-call-iptables=1\nnet.bridge.bridge-nf-call-ip6tables=1\n' \
-    | sudo tee /etc/sysctl.d/99-ludus-bridge-nf.conf
-  sudo modprobe br_netfilter && sudo sysctl --system
+    | tee /etc/sysctl.d/99-ludus-bridge-nf.conf
+  modprobe br_netfilter && sysctl --system
   ```
 - **Flat network = no VLAN isolation.** Every host can reach every host (as in
   the real competition). Do not assume network-level containment.
 - **passlib/crypt** must be present in the ludus user's Ansible environment:
-  Bogan and Wookie use the `password_hash('sha512')` filter.
+  Bogan and Wookie use the `password_hash('sha512')` filter. Without root,
+  install it user-scope: `pip install --user passlib` (don't `sudo apt`).
 - **Gitea checksum** `corellia_gitea_sha256` is intentionally blank (downloads
   unverified). Fill it from `https://dl.gitea.com/gitea/<version>/` to pin.
 - **Corellia secrets persist.** app.ini is written only on first install so the

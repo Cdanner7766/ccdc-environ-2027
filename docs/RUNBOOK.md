@@ -3,9 +3,11 @@
 Procedure for standing up the STAR BARS range on Ludus and confirming the
 intended-weak state is present. Read `CLAUDE.md` first for the rules.
 
-All `ludus` commands run as the Ludus user that owns the range (the one whose
-`ludus` CLI is configured with an API key). br_netfilter/sysctl fixes need root
-on the Proxmox host.
+All `ludus` commands run as the unprivileged `claude` user that owns the range
+(its `ludus` CLI is configured with an API key). This user has **no root** on
+the Proxmox host, so any host-level fix (br_netfilter/sysctl, system packages)
+must be done by the lab admin — the agent flags it, it does not run `sudo`.
+Development is on a home lab, so confirm templates exist before relying on them.
 
 ## 1. Preflight (before deploy)
 
@@ -14,8 +16,9 @@ on the Proxmox host.
 ```
 
 Confirms: `ludus` CLI present, br_netfilter loaded + sysctl set, required
-collections installed, and which templates are built. Resolve anything it flags
-(especially br_netfilter — see CLAUDE.md for the persistent fix).
+collections installed, and which templates are built. Resolve anything it flags.
+br_netfilter is a host-level, root-only fix — if it's flagged, ask the lab admin
+(see CLAUDE.md); the agent cannot apply it.
 
 ## 2. Load collections and roles
 
@@ -33,9 +36,10 @@ for r in ansible/roles/*/ ; do ludus ansible roles add -d "$r" --force ; done
 ludus templates list
 ```
 
-Every `template:` named in `ludus-range-config.yml` must be BUILT. If only
-`win2019-server-x64-no-security-updates-template` exists (not the plain 2019),
-set Deathstar's `template:` to it. See CLAUDE.md "Templates".
+Every `template:` named in `ludus-range-config.yml` must be BUILT. On the home
+lab, build any that are missing (`ludus templates build`). Deathstar stays on
+`win2019-server-x64-template` — if it's absent, build it or ask the owner; do
+not substitute. See CLAUDE.md "Templates".
 
 ## 4. Set config and deploy
 
