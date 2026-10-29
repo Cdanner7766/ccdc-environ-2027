@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Recommended permissions for an autonomous agent on the Ludus server. Copy to .claude/settings.json on that machine: cp .claude/settings.json.example .claude/settings.json. Review before enabling. Read-only Ludus reads, validation scripts, role registration, and config-set are pre-approved; 'ludus range deploy' prompts; 'ludus range rm' is denied outright.",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(yamllint:*)",
+      "Bash(ansible-lint:*)",
+      "Bash(ansible-galaxy collection install:*)",
+      "Bash(ludus templates list:*)",
+      "Bash(ludus range status:*)",
+      "Bash(ludus range list:*)",
+      "Bash(ludus range config get:*)",
+      "Bash(ludus range logs:*)",
+      "Bash(ludus range errors:*)",
+      "Bash(ludus ansible roles add:*)",
+      "Bash(ludus ansible collection add:*)",
+      "Bash(ludus range config set:*)",
+      "Bash(./scripts/preflight.sh:*)",
+      "Bash(./scripts/validate-range.sh:*)"
+    ],
+    "deny": [
+      "Bash(ludus range rm:*)"
+    ],
+    "ask": [
+      "Bash(ludus range deploy:*)"
+    ]
+  }
+}
